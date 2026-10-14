@@ -49,7 +49,7 @@ Kad nije siguran, radije javi nego propusti.
 
 ```bash
 npm install
-npm test                         # 22 testa
+npm test                         # 30 testova
 # D1 baza već postoji (database_id je u wrangler.toml)
 npm run db:init                  # schema.sql (već pokrenuta, idempotentno)
 npm run dev                      # lokalno; cron: curl "localhost:8787/__scheduled"
@@ -60,13 +60,24 @@ npm run deploy
 
 - `GET /api/notices` – sve nadolazeće obavijesti
 - `GET /api/notices?place=Samobor&street=Ulica%20grada%20Wirgesa&house=12` – samo za tu adresu, s poljem `match`
-- `GET /api/status` – zadnja pokretanja scrapera (vidi se ako HEP promijeni stranicu)
+- `GET /api/status` – zadnja pokretanja scrapera i broj pretplata
+- `GET /api/addresses` – naselja i ulice za odabir adrese
+- `GET /api/vapid` – javni ključ za `pushManager.subscribe()`
+- `POST /api/subscribe` `{subscription, address}`, `POST /api/unsubscribe` `{endpoint}`
+- `POST /api/test` `{endpoint}` – probna obavijest samo na taj uređaj
 
-## Push obavijesti
+## Sučelje i push obavijesti
 
-Nove obavijesti ulaze u bazu s `notified = 0`. Push servis iz aplikacije za odvoz
-otpada treba ih pročitati, za svakog pretplatnika pozvati `matchNotice()` s
-njegovom adresom, poslati push i postaviti `notified = 1`.
+`public/` je PWA (bez build koraka): korisnik odabere naselje i ulicu (popis od
+Komunalca, `src/data/addresses.ts`), vidi stanje za svoju adresu i uključi obavijesti.
+
+- Web Push: `aes128gcm` + VAPID (`@block65/webcrypto-web-push`), radi i na iPhoneu
+  (iOS 16.4+, kad je stranica dodana na početni zaslon).
+- VAPID ključ Worker generira sam pri prvom zahtjevu i čuva u D1 (`settings`).
+- Nakon svakog scrapanja: "najava" čim se isključenje pojavi, "danas" ujutro na dan
+  isključenja. Tablica `deliveries` sprječava duplikate; pretplate koje push servis
+  odbije (404/410) se brišu.
+- Postojeće aplikacije (odvoz, autobusi) se ne diraju, hub ih samo povezuje.
 
 ## Deploy
 

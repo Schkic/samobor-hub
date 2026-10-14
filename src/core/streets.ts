@@ -26,7 +26,8 @@ export function normalizeText(s: string): string {
  * daju isti ključ. Točke se brišu ("151. samoborske brigade" → "151 SAMOBORSKE BRIGADE").
  */
 export function normalizeStreet(s: string): string {
-  let n = normalizeText(s).replace(/\./g, " ").replace(/\s+/g, " ").trim();
+  // točke i crtice: "Zrinsko – Frankopanska" = "ZRINSKO-FRANKOPANSKA", "dr. Mije" = "DR MIJE"
+  let n = normalizeText(s).replace(/[.\-–—]/g, " ").replace(/\s+/g, " ").trim();
   n = n
     .replace(/^(ULICA|UL)\s+/, "")
     .replace(/\s+ULICA$/, "")

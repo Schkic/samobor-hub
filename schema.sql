@@ -28,3 +28,32 @@ CREATE TABLE IF NOT EXISTS source_runs (
   found      INTEGER NOT NULL DEFAULT 0,
   error      TEXT
 );
+
+-- Postavke huba (npr. VAPID ključ koji Worker sam generira pri prvom pokretanju).
+CREATE TABLE IF NOT EXISTS settings (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
+-- Push pretplate: jedan preglednik/uređaj = jedna pretplata s jednom adresom.
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id         TEXT PRIMARY KEY,          -- hash endpointa
+  endpoint   TEXT NOT NULL UNIQUE,
+  p256dh     TEXT NOT NULL,
+  auth       TEXT NOT NULL,
+  place      TEXT NOT NULL,
+  street     TEXT NOT NULL,
+  house      TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+-- Što je kome poslano, da nitko ne dobije istu obavijest dvaput.
+-- kind: 'najava' (čim se obavijest pojavi) ili 'danas' (jutro na dan isključenja)
+CREATE TABLE IF NOT EXISTS deliveries (
+  notice_id TEXT NOT NULL,
+  sub_id    TEXT NOT NULL,
+  kind      TEXT NOT NULL,
+  sent_at   TEXT NOT NULL,
+  PRIMARY KEY (notice_id, sub_id, kind)
+);

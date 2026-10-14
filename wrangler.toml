@@ -2,8 +2,15 @@ name = "samobor-hub"
 main = "src/worker.ts"
 compatibility_date = "2026-10-01"
 
-# 04:00 i 14:00 UTC = 06:00 i 16:00 po zagrebačkom ljetnom vremenu.
-# Dvaput dnevno jer HEP tijekom dana dodaje i otkazuje radove.
+# Sučelje (PWA). /api/* uvijek ide u Worker, ostalo su statičke datoteke.
+[assets]
+directory = "public"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
+# 04:00 i 14:00 UTC = 06:00 i 16:00 po zagrebačkom ljetnom vremenu (zimi 05:00 i 15:00).
+# Jutarnje pokretanje šalje i podsjetnik "danas bez struje".
 [triggers]
 crons = ["0 4,14 * * *"]
 
@@ -11,3 +18,6 @@ crons = ["0 4,14 * * *"]
 binding = "DB"
 database_name = "samobor-hub"
 database_id = "2a39c488-eb28-4612-a2da-32690750c8e3"
+
+[observability]
+enabled = true
