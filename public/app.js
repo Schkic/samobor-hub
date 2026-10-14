@@ -173,9 +173,14 @@ $("adresa-obrazac").addEventListener("submit", async (e) => {
   spremiAdresu(adresa);
   prikaziObrazac(false);
   await osvjezi();
-  const sub = await trenutnaPretplata();
-  if (sub) await pretplati(sub, true);
+  await osvjeziPretplatu();
 });
+
+/** Ako je uređaj prijavljen, pošalji novu adresu/zonu/teme. */
+async function osvjeziPretplatu() {
+  const sub = await trenutnaPretplata().catch(() => null);
+  if (sub && Notification.permission === "granted") await pretplati(sub, true);
+}
 
 // ---------------------------------------------------------------- dashboard
 
@@ -287,7 +292,7 @@ function temaOtpad(d) {
     const zone = el("div", { className: "zone" });
     for (const z of o.options) {
       const b = el("button", { className: "gumb-tihi", type: "button" }, el("b", { textContent: z.zone }), z.note || "cijela ulica");
-      b.addEventListener("click", async () => { adresa = { ...adresa, zone: z.zone }; spremiAdresu(adresa); await osvjezi(); });
+      b.addEventListener("click", async () => { adresa = { ...adresa, zone: z.zone }; spremiAdresu(adresa); await osvjezi(); await osvjeziPretplatu(); });
       zone.append(b);
     }
     box.append(zone);
@@ -308,12 +313,12 @@ function temaOtpad(d) {
   const yard = o.overview.yard[0];
   if (yard) box.append(el("p", {}, `Mobilno reciklažno dvorište ${kada(yard.date, false)}, ${yard.time} h, ${yard.place}.`));
   box.append(el("p", { className: "sitno" },
-    `Zona ${o.zone}. Za podsjetnik večer prije odvoza koristite `,
-    el("a", { href: "https://odvoz-otpada-samobor.opticora.hr/", textContent: "aplikaciju Odvoz otpada" }), "."));
+    `Zona ${o.zone}. Podsjetnik večer prije odvoza možete uključiti u obavijestima ispod. Cijeli raspored je u `,
+    el("a", { href: "https://odvoz-otpada-samobor.opticora.hr/", textContent: "aplikaciji Odvoz otpada" }), "."));
   if (o.options.length > 1) {
     const b = el("button", { className: "gumb-tihi", type: "button", textContent: "Promijeni zonu" });
     b.style.marginTop = "8px";
-    b.addEventListener("click", async () => { const { zone, ...bez } = adresa; adresa = bez; spremiAdresu(adresa); await osvjezi(); });
+    b.addEventListener("click", async () => { const { zone, ...bez } = adresa; adresa = bez; spremiAdresu(adresa); await osvjezi(); await osvjeziPretplatu(); });
     box.append(b);
   }
 }
@@ -395,6 +400,21 @@ function base64UrlToBytes(s) {
   const pad = s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4);
   return Uint8Array.from(atob(pad), (c) => c.charCodeAt(0));
 }
+// Teme se pamte na uređaju; zadano struja i voda (odvoz već šalje aplikacija Odvoz otpada)
+const TEME_KLJUC = "samobor.teme";
+function ucitajTeme() {
+  try {
+    const t = JSON.parse(localStorage.getItem(TEME_KLJUC));
+    if (Array.isArray(t)) return t.filter((x) => ["struja", "voda", "odvoz"].includes(x));
+  } catch { /* nema spremljenih */ }
+  return ["struja", "voda"];
+}
+function odabraneTeme() {
+  return [...document.querySelectorAll('#teme-izbor input[name="tema"]:checked')].map((i) => i.value);
+}
+const NAZIV_TEME = { struja: "struja", voda: "voda", odvoz: "odvoz otpada" };
+const popisTema = (t) => t.map((x) => NAZIV_TEME[x]).join(", ").replace(/, ([^,]*)$/, " i $1");
+
 async function pretplati(postojeca, tiho = false) {
   try {
     let sub = postojeca;
@@ -410,8 +430,11 @@ async function pretplati(postojeca, tiho = false) {
       sub = await registracija.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64UrlToBytes(publicKey) });
     }
     const { zone, ...bezZone } = adresa;
-    await api("/api/subscribe", { subscription: sub.toJSON(), address: bezZone });
-    poruka(tiho ? `Obavijesti sada stižu za ${opisAdrese(adresa)}.` : `Uključeno. Javit ćemo vam isključenja struje i vode za ${opisAdrese(adresa)}.`);
+    const teme = odabraneTeme();
+    await api("/api/subscribe", { subscription: sub.toJSON(), address: bezZone, topics: teme, zone: zone ?? null });
+    poruka(!teme.length
+      ? "Nijedna tema nije odabrana, pa vam zasad ništa nećemo slati."
+      : `${tiho ? "Spremljeno" : "Uključeno"}. Za ${opisAdrese(adresa)} javljamo: ${popisTema(teme)}.`);
   } catch (e) {
     poruka(`Obavijesti se nisu uključile: ${e.message}.`);
   }
@@ -431,6 +454,15 @@ function postaviObavijesti() {
     $("ukljuci").hidden = true;
     poruka("Ovaj preglednik ne podržava obavijesti. Pokušajte u Chromeu, Firefoxu ili Safariju.");
     return;
+  }
+  const teme = ucitajTeme();
+  for (const i of document.querySelectorAll('#teme-izbor input[name="tema"]')) {
+    i.checked = teme.includes(i.value);
+    i.addEventListener("change", async () => {
+      try { localStorage.setItem(TEME_KLJUC, JSON.stringify(odabraneTeme())); } catch { /* privatni način */ }
+      const sub = await trenutnaPretplata();
+      if (sub && Notification.permission === "granted") await pretplati(sub, true);
+    });
   }
   $("ukljuci").addEventListener("click", () => pretplati(null));
   $("proba").addEventListener("click", async () => {

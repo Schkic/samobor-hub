@@ -3,10 +3,16 @@ import { buildPushPayload } from "@block65/webcrypto-web-push";
 import { matchNotice, type MatchLevel } from "./streets";
 import type { Address, Notice } from "./types";
 import { noticeId } from "./id";
+import { resolveZone, zoneOverview, WASTE_LABEL, type OdvozData, type WasteType } from "../sources/odvoz";
 
 // ---------------------------------------------------------------------------
 // Tipovi
 // ---------------------------------------------------------------------------
+
+/** Teme obavijesti koje korisnik može uključiti. */
+export type Topic = "struja" | "voda" | "odvoz";
+export const TOPICS: Topic[] = ["struja", "voda", "odvoz"];
+export const DEFAULT_TOPICS: Topic[] = ["struja", "voda"]; // odvoz već šalje aplikacija za odvoz
 
 export interface Subscription {
   id: string;
@@ -14,9 +20,14 @@ export interface Subscription {
   p256dh: string;
   auth: string;
   address: Address;
+  topics: Topic[];
+  zone?: string; // ručno odabrana zona odvoza (ulice s više zona)
 }
 
-export type DeliveryKind = "najava" | "danas";
+export type DeliveryKind = "najava" | "danas" | "vecer";
+
+/** Kojoj temi pripada obavijest iz izvora. */
+export const topicOf = (n: Notice): Topic => (n.source === "vio" ? "voda" : "struja");
 
 export interface PlannedPush {
   notice: Notice;
@@ -46,6 +57,7 @@ export function planPushes(
   for (const notice of notices) {
     if (notice.date < today) continue;
     for (const sub of subs) {
+      if (!sub.topics.includes(topicOf(notice))) continue;
       const match = matchNotice(notice, sub.address);
       if (!match) continue;
       // "Možda i vi" za cijeli grad Samobor bila bi poruka tisućama ljudi zbog jedne ulice:
@@ -170,6 +182,13 @@ interface SubRow {
   place: string;
   street: string;
   house: string | null;
+  topics: string | null;
+  zone: string | null;
+}
+
+export function parseTopics(v: string | null | undefined): Topic[] {
+  if (v == null) return [...DEFAULT_TOPICS];
+  return v.split(",").map((t) => t.trim()).filter((t): t is Topic => (TOPICS as string[]).includes(t));
 }
 
 const toSub = (r: SubRow): Subscription => ({
@@ -178,6 +197,8 @@ const toSub = (r: SubRow): Subscription => ({
   p256dh: r.p256dh,
   auth: r.auth,
   address: { place: r.place, street: r.street, houseNumber: r.house ?? undefined },
+  topics: parseTopics(r.topics),
+  zone: r.zone ?? undefined,
 });
 
 export async function subscriptionId(endpoint: string): Promise<string> {
@@ -186,22 +207,25 @@ export async function subscriptionId(endpoint: string): Promise<string> {
 
 export async function saveSubscription(
   db: D1Database,
-  input: { endpoint: string; p256dh: string; auth: string; address: Address },
+  input: { endpoint: string; p256dh: string; auth: string; address: Address; topics?: Topic[]; zone?: string },
 ): Promise<Subscription> {
   const id = await subscriptionId(input.endpoint);
   const now = new Date().toISOString();
   const a = input.address;
+  const topics = input.topics ?? [...DEFAULT_TOPICS];
   await db
     .prepare(
-      `INSERT INTO subscriptions (id, endpoint, p256dh, auth, place, street, house, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO subscriptions (id, endpoint, p256dh, auth, place, street, house, topics, zone, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(endpoint) DO UPDATE SET
          p256dh = excluded.p256dh, auth = excluded.auth, place = excluded.place,
-         street = excluded.street, house = excluded.house, updated_at = excluded.updated_at`,
+         street = excluded.street, house = excluded.house, topics = excluded.topics,
+         zone = excluded.zone, updated_at = excluded.updated_at`,
     )
-    .bind(id, input.endpoint, input.p256dh, input.auth, a.place, a.street, a.houseNumber ?? null, now, now)
+    .bind(id, input.endpoint, input.p256dh, input.auth, a.place, a.street, a.houseNumber ?? null,
+      topics.join(","), input.zone ?? null, now, now)
     .run();
-  return { id, endpoint: input.endpoint, p256dh: input.p256dh, auth: input.auth, address: a };
+  return { id, endpoint: input.endpoint, p256dh: input.p256dh, auth: input.auth, address: a, topics, zone: input.zone };
 }
 
 export async function deleteSubscription(db: D1Database, endpoint: string): Promise<void> {
@@ -290,6 +314,89 @@ export async function deliver(
     } else {
       errors++; // pokušat će ponovno u sljedećem pokretanju
     }
+  }
+  return { sent, gone, errors };
+}
+
+// ---------------------------------------------------------------------------
+// Odvoz otpada: podsjetnik večer prije
+// ---------------------------------------------------------------------------
+
+export interface PlannedOdvoz {
+  sub: Subscription;
+  zone: string;
+  date: string;
+  types: WasteType[];
+  key: string; // "odvoz:<zona>:<datum>", za tablicu deliveries
+}
+
+/** Tko dobiva podsjetnik da je sutra odvoz (samo pretplate s temom "odvoz"). */
+export function planOdvozReminders(
+  data: OdvozData,
+  subs: Subscription[],
+  delivered: Set<string>, // `${key}|${subId}|vecer`
+  tomorrow: string,
+): PlannedOdvoz[] {
+  const plan: PlannedOdvoz[] = [];
+  for (const sub of subs) {
+    if (!sub.topics.includes("odvoz")) continue;
+    const { zone } = resolveZone(data, sub.address.place, sub.address.street, sub.address.houseNumber, sub.zone);
+    if (!zone) continue; // ulica s više zona bez odabrane zone: ne nagađamo
+    const day = zoneOverview(data, zone, tomorrow, tomorrow)?.days[0];
+    if (!day) continue;
+    const key = `odvoz:${zone}:${tomorrow}`;
+    if (delivered.has(`${key}|${sub.id}|vecer`)) continue;
+    plan.push({ sub, zone, date: tomorrow, types: day.types, key });
+  }
+  return plan;
+}
+
+export function odvozPayload(p: PlannedOdvoz) {
+  const list = p.types.map((t) => WASTE_LABEL[t].toLowerCase()).join(", ");
+  return {
+    title: `Sutra je odvoz: ${list}`,
+    body: "Iznesite spremnik večeras ili sutra do 6 sati ujutro.",
+    tag: p.key,
+    url: "/",
+  };
+}
+
+export async function deliverOdvoz(
+  db: D1Database,
+  data: OdvozData,
+  tomorrow: string,
+  fetcher: typeof fetch = fetch,
+): Promise<{ sent: number; gone: number; errors: number }> {
+  const subs = (await db.prepare("SELECT * FROM subscriptions WHERE topics LIKE '%odvoz%'").all<SubRow>()).results.map(toSub);
+  if (!subs.length) return { sent: 0, gone: 0, errors: 0 };
+  const done = await db
+    .prepare("SELECT notice_id, sub_id, kind FROM deliveries WHERE kind = 'vecer' AND notice_id LIKE ?")
+    .bind(`odvoz:%:${tomorrow}`)
+    .all<{ notice_id: string; sub_id: string; kind: string }>();
+  const delivered = new Set(done.results.map((d) => `${d.notice_id}|${d.sub_id}|${d.kind}`));
+  const plan = planOdvozReminders(data, subs, delivered, tomorrow);
+  if (!plan.length) return { sent: 0, gone: 0, errors: 0 };
+
+  const { privateJwk } = await getVapidKey(db);
+  let sent = 0, gone = 0, errors = 0;
+  for (const p of plan) {
+    let result: SendResult;
+    try {
+      // vrijedi do sutra ujutro; poslije toga podsjetnik više nema smisla
+      result = await sendPush(privateJwk, p.sub, odvozPayload(p), 12 * 3600, fetcher);
+    } catch {
+      result = "error";
+    }
+    if (result === "sent") {
+      sent++;
+      await db
+        .prepare("INSERT OR IGNORE INTO deliveries (notice_id, sub_id, kind, sent_at) VALUES (?, ?, 'vecer', ?)")
+        .bind(p.key, p.sub.id, new Date().toISOString())
+        .run();
+    } else if (result === "gone") {
+      gone++;
+      await deleteSubscription(db, p.sub.endpoint);
+    } else errors++;
   }
   return { sent, gone, errors };
 }

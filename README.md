@@ -50,7 +50,7 @@ Kad nije siguran, radije javi nego propusti.
 
 ```bash
 npm install
-npm test                         # 44 testa
+npm test                         # 46 testova
 # D1 baza već postoji (database_id je u wrangler.toml)
 npm run db:init                  # schema.sql (već pokrenuta, idempotentno)
 npm run dev                      # lokalno; cron: curl "localhost:8787/__scheduled"
@@ -65,7 +65,7 @@ npm run deploy
 - `GET /api/status` – zadnja pokretanja scrapera i broj pretplata
 - `GET /api/addresses` – naselja i ulice za odabir adrese
 - `GET /api/vapid` – javni ključ za `pushManager.subscribe()`
-- `POST /api/subscribe` `{subscription, address}`, `POST /api/unsubscribe` `{endpoint}`
+- `POST /api/subscribe` `{subscription, address, topics?, zone?}` – `topics` ⊆ `struja, voda, odvoz` (zadano struja i voda), `POST /api/unsubscribe` `{endpoint}`
 - `POST /api/test` `{endpoint}` – probna obavijest samo na taj uređaj
 
 ## Sučelje i push obavijesti
@@ -76,8 +76,11 @@ Komunalca, `src/data/addresses.ts`), vidi stanje za svoju adresu i uključi obav
 - Web Push: `aes128gcm` + VAPID (`@block65/webcrypto-web-push`), radi i na iPhoneu
   (iOS 16.4+, kad je stranica dodana na početni zaslon).
 - VAPID ključ Worker generira sam pri prvom zahtjevu i čuva u D1 (`settings`).
+- Korisnik bira teme: struja, voda (uključene po zadanom) i odvoz otpada.
 - Nakon svakog scrapanja: "najava" čim se isključenje pojavi, "danas" ujutro na dan
-  isključenja. Tablica `deliveries` sprječava duplikate; pretplate koje push servis
+  isključenja.
+- Odvoz: cron u 17:00 UTC (19 h ljeti, 18 h zimi) šalje "Sutra je odvoz: …" prema zoni
+  iz javnog `data.json`; ulica s više zona dobiva podsjetnik tek kad korisnik odabere zonu. Tablica `deliveries` sprječava duplikate; pretplate koje push servis
   odbije (404/410) se brišu.
 - Postojeće aplikacije (odvoz, autobusi) se ne diraju, hub ih samo povezuje.
 

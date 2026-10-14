@@ -47,7 +47,7 @@ test("vremenska crta: isključenja prije odvoza, po danu i satu, s blagdanskim p
 });
 
 const sub = (id: string, place: string, street: string, houseNumber?: string): Subscription =>
-  ({ id, endpoint: `https://push.example/${id}`, p256dh: "k", auth: "a", address: { place, street, houseNumber } });
+  ({ id, endpoint: `https://push.example/${id}`, p256dh: "k", auth: "a", address: { place, street, houseNumber }, topics: ["struja", "voda"] });
 
 test("push: 'okolne ulice' u gradu ne ide cijelom gradu, ali ide pogođenoj ulici i selu", () => {
   const grad = mk("v1", "vio", "2026-10-15", ["SAMOBOR"], "VLADIMIRA NAZORA", { partial: true });

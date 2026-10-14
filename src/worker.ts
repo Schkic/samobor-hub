@@ -5,10 +5,13 @@ import type { Address, Notice } from "./core/types";
 import {
   deleteSubscription,
   deliver,
+  deliverOdvoz,
   getSubscription,
   getVapidKey,
   saveSubscription,
   sendPush,
+  TOPICS,
+  type Topic,
 } from "./core/push";
 import { fetchHepDay, HEP_SAMOBOR } from "./sources/hep";
 import { parseVioHtml, vioToNotices } from "./sources/vio";
@@ -89,6 +92,22 @@ async function runAll(env: Env) {
   console.log(`${hep}; push: ${push.sent} poslano, ${push.gone} odjavljeno, ${push.errors} grešaka`);
 }
 
+/** Navečer: podsjetnik da je sutra odvoz, samo za one koji su to uključili. */
+async function runOdvozReminders(env: Env) {
+  const odvoz = await fetchOdvoz(env.DB);
+  if (!odvoz) {
+    console.log("odvoz: data.json nedostupan, podsjetnici preskočeni");
+    return { sent: 0, gone: 0, errors: 0 };
+  }
+  const tomorrow = dateRange(todayZagreb(), 2)[1];
+  const r = await deliverOdvoz(env.DB, odvoz.data, tomorrow);
+  console.log(`odvoz ${tomorrow}: ${r.sent} poslano, ${r.gone} odjavljeno, ${r.errors} grešaka`);
+  return r;
+}
+
+/** Cron za večernji podsjetnik (wrangler.toml); ostali cronovi su HEP. */
+const ODVOZ_CRON = "0 17 * * *";
+
 // ---------------------------------------------------------------------------
 // HTTP
 // ---------------------------------------------------------------------------
@@ -123,6 +142,15 @@ function parseAddress(a: any): Address | string {
   if (place === TOWN && !TOWN_STREETS.includes(street)) return "ulica nije na popisu ulica Samobora";
   if (house.length > 12 || (house && !/^\d+[\p{L}\d/ -]*$/u.test(house))) return "neispravan kućni broj";
   return { place, street, houseNumber: house || undefined };
+}
+
+/** Teme obavijesti: podskup od TOPICS; bez polja = zadane (struja, voda). */
+function parseTopicList(t: unknown): Topic[] | undefined | string {
+  if (t == null) return undefined;
+  if (!Array.isArray(t)) return "neispravne teme";
+  const out = [...new Set(t.map(String))];
+  if (out.some((x) => !(TOPICS as string[]).includes(x))) return "nepoznata tema";
+  return out as Topic[];
 }
 
 function parseSubscription(s: any): { endpoint: string; p256dh: string; auth: string } | string {
@@ -210,7 +238,11 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
     if (typeof sub === "string") return bad(sub);
     const address = parseAddress(body?.address);
     if (typeof address === "string") return bad(address);
-    await saveSubscription(env.DB, { ...sub, address });
+    const topics = parseTopicList(body?.topics);
+    if (typeof topics === "string") return bad(topics);
+    const zone = body?.zone == null || body.zone === "" ? undefined : String(body.zone);
+    if (zone && (zone.length > 40 || !/^[\p{L}\d .-]+$/u.test(zone))) return bad("neispravna zona");
+    await saveSubscription(env.DB, { ...sub, address, topics, zone });
     return json({ ok: true });
   }
 
@@ -230,7 +262,9 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
     const { privateJwk } = await getVapidKey(env.DB);
     const result = await sendPush(privateJwk, sub, {
       title: "Obavijesti rade ✓",
-      body: `Javit ćemo vam kad HEP najavi isključenje struje za ${sub.address.street}${sub.address.houseNumber ? " " + sub.address.houseNumber : ""}.`,
+      body: `Stizat će vam obavijesti za ${sub.address.street}${sub.address.houseNumber ? " " + sub.address.houseNumber : ""}: ${
+        sub.topics.map((t) => ({ struja: "struja", voda: "voda", odvoz: "odvoz otpada" })[t]).join(", ") || "ništa nije odabrano"
+      }.`,
       tag: "test",
       url: "/",
     }, 600);
@@ -274,6 +308,7 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
     const out: Record<string, unknown> = {};
     out.hep = await runHep(env).then((r) => ({ found: r.found, added: r.added.length })).catch((e) => String(e));
     out.push = await pushAll(env);
+    if (url.searchParams.get("odvoz") === "1") out.odvoz = await runOdvozReminders(env);
     return json(out);
   }
 
@@ -288,8 +323,8 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
 }
 
 export default {
-  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(runAll(env));
+  async scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(event.cron === ODVOZ_CRON ? runOdvozReminders(env) : runAll(env));
   },
 
   async fetch(req: Request, env: Env): Promise<Response> {

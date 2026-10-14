@@ -7,6 +7,7 @@ import {
   pushPayload,
   sendPush,
   type Subscription,
+  type Topic,
 } from "../src/core/push";
 import { parseStreetList, normalizeStreet } from "../src/core/streets";
 import type { Notice } from "../src/core/types";
@@ -20,9 +21,9 @@ function notice(id: string, date: string, places: string[], raw: string): Notice
   };
 }
 
-const sub = (id: string, place: string, street: string, houseNumber?: string): Subscription => ({
+const sub = (id: string, place: string, street: string, houseNumber?: string, topics: Topic[] = ["struja", "voda"], zone?: string): Subscription => ({
   id, endpoint: `https://push.example/${id}`, p256dh: "k", auth: "a",
-  address: { place, street, houseNumber },
+  address: { place, street, houseNumber }, topics, zone,
 });
 
 const TODAY = "2026-10-14";
@@ -194,4 +195,15 @@ test("popis adresa: 245 ulica, 56 naselja, svi ključevi jedinstveni i neprazni"
   assert.equal(normalizeStreet("DR. MIJE JURATOVIĆA"), normalizeStreet("Ulica dr. Mije Juratovića"));
   assert.equal(normalizeStreet("ŠENOINA ULICA"), normalizeStreet("Šenoina"));
   assert.equal(normalizeStreet("HRVOJA VUKČIĆA HRVATINIĆA"), normalizeStreet("Ulica Hrvoja Vukčića – Hrvatinića"));
+});
+
+test("push po temama: tko je isključio vodu ne dobiva obavijest o vodi", () => {
+  const voda: Notice = {
+    id: "w1", source: "vio", kind: "voda", date: "2026-10-15", start: "09:00", end: "15:00",
+    places: ["RUDE"], streets: [], rawStreets: "RUDE", note: null, partial: false, url: "",
+  };
+  const samoStruja = sub("s", "Rude", "Rude", "92A", ["struja"]);
+  const oboje = sub("o", "Rude", "Rude", "92A");
+  const plan = planPushes([voda], [samoStruja, oboje], new Set(), TODAY, false);
+  assert.deepEqual(plan.map((p) => p.sub.id), ["o"]);
 });

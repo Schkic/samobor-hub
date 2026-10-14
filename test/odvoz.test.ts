@@ -128,3 +128,30 @@ test("pregled zone: sljedeći odvozi po vrsti, dani, blagdani, reciklažno dvori
   assert.equal(s2.lastDate, "2026-11-21");
   assert.equal(zoneOverview(DATA, "Nema", "2026-10-14", "2026-10-31"), null);
 });
+
+test("podsjetnik večer prije odvoza: samo pretplate s temom odvoz, bez duplikata", async () => {
+  const { planOdvozReminders, odvozPayload } = await import("../src/core/push");
+  const base = { endpoint: "e", p256dh: "k", auth: "a" };
+  const subs = [
+    { ...base, id: "da", address: { place: "Rude", street: "Rude", houseNumber: "92A" }, topics: ["odvoz"] as const },
+    { ...base, id: "ne", address: { place: "Rude", street: "Rude", houseNumber: "92A" }, topics: ["struja", "voda"] as const },
+    // ulica s dvije zone bez kućnog broja i bez odabrane zone: ne nagađamo
+    { ...base, id: "nejasno", address: { place: "Samobor", street: "Ulica Josipa Jelačića" }, topics: ["odvoz"] as const },
+    { ...base, id: "zona", address: { place: "Samobor", street: "Ulica Josipa Jelačića" }, topics: ["odvoz"] as const, zone: "Samobor 4" },
+  ].map((s) => ({ ...s, topics: [...s.topics] }));
+
+  // 19.10. je miješani u Rudama i Samobor 4
+  const plan = planOdvozReminders(DATA, subs, new Set(), "2026-10-19");
+  assert.deepEqual(plan.map((p) => [p.sub.id, p.zone, p.types]), [
+    ["da", "Rude", ["m"]],
+    ["zona", "Samobor 4", ["m"]],
+  ]);
+  assert.match(odvozPayload(plan[0]).title, /^Sutra je odvoz: miješani/i);
+
+  // već poslano → ne šalje opet
+  const again = planOdvozReminders(DATA, subs, new Set(["odvoz:Rude:2026-10-19|da|vecer"]), "2026-10-19");
+  assert.deepEqual(again.map((p) => p.sub.id), ["zona"]);
+
+  // dan bez odvoza
+  assert.equal(planOdvozReminders(DATA, subs, new Set(), "2026-10-20").length, 0);
+});

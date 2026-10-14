@@ -44,12 +44,15 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   place      TEXT NOT NULL,
   street     TEXT NOT NULL,
   house      TEXT,
+  topics     TEXT,                      -- "struja,voda,odvoz"; NULL = struja i voda
+  zone       TEXT,                      -- ručno odabrana zona odvoza
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
 
 -- Što je kome poslano, da nitko ne dobije istu obavijest dvaput.
--- kind: 'najava' (čim se obavijest pojavi) ili 'danas' (jutro na dan isključenja)
+-- kind: 'najava' (čim se obavijest pojavi), 'danas' (jutro na dan isključenja),
+-- 'vecer' (podsjetnik za odvoz; notice_id = 'odvoz:<zona>:<datum>')
 CREATE TABLE IF NOT EXISTS deliveries (
   notice_id TEXT NOT NULL,
   sub_id    TEXT NOT NULL,
