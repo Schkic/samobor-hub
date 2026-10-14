@@ -129,7 +129,20 @@ export async function vioToNotices(rows: VioRow[], url = VIO_URL): Promise<{ not
 }
 
 export async function fetchVio(fetcher: typeof fetch = fetch) {
-  const res = await fetcher(VIO_URL, { headers: { "User-Agent": "samobor-hub (+https://opticora.hr)" } });
+  const res = await fetcher(VIO_URL, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (compatible; samobor-hub/1.0; +https://opticora.hr)",
+      "Accept": "text/html,application/xhtml+xml",
+      "Accept-Language": "hr,en;q=0.5",
+    },
+  });
   if (!res.ok) throw new Error(`VIO: HTTP ${res.status}`);
-  return vioToNotices(parseVioHtml(await res.text()));
+  const html = await res.text();
+  try {
+    return await vioToNotices(parseVioHtml(html));
+  } catch (e) {
+    // Da se iz /api/status vidi što je Worker stvarno dobio
+    const title = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1]?.trim() ?? "bez naslova";
+    throw new Error(`${(e as Error).message} [${res.url} · ${html.length} B · "${title.slice(0, 80)}"]`);
+  }
 }
