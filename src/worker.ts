@@ -108,6 +108,12 @@ function json(data: unknown, status = 200, cache = "no-store"): Response {
 
 const bad = (msg: string) => json({ error: msg }, 400);
 
+function timingSafeEqual(a: string, b: string): boolean {
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
 /** Provjera adrese koju šalje korisnik: mora biti jedno od poznatih naselja. */
 function parseAddress(a: any): Address | string {
   if (!a || typeof a !== "object") return "nedostaje adresa";
@@ -232,6 +238,23 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
     }, 600);
     if (result === "gone") await deleteSubscription(env.DB, sub.endpoint);
     return json({ result });
+  }
+
+  // POST /api/admin/run?source=vio|hep|all → ručno pokretanje izvora (za provjere).
+  // Ključ je u D1 (settings.admin_token); bez njega ruta ne postoji.
+  if (path === "/api/admin/run" && req.method === "POST") {
+    const row = await env.DB.prepare("SELECT value FROM settings WHERE key = 'admin_token'").first<{ value: string }>();
+    const given = req.headers.get("x-admin-token") ?? "";
+    if (!row || !row.value || given.length !== row.value.length || !timingSafeEqual(given, row.value)) {
+      return json({ error: "not found" }, 404);
+    }
+    const source = url.searchParams.get("source") ?? "all";
+    const out: Record<string, unknown> = {};
+    if (source === "vio" || source === "all") out.vio = await runVio(env).then((r) => ({ found: r.found, added: r.added.length })).catch((e) => String(e));
+    if (source === "hep" || source === "all") out.hep = await runHep(env).then((r) => ({ found: r.found, added: r.added.length })).catch((e) => String(e));
+    const today = todayZagreb();
+    out.push = await deliver(env.DB, await upcomingNotices(env.DB, today), today, zagrebHour() < 12);
+    return json(out);
   }
 
   // GET /api/status → zadnja pokretanja izvora i broj pretplata
