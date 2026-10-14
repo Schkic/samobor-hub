@@ -9,10 +9,11 @@ binding = "ASSETS"
 not_found_handling = "single-page-application"
 run_worker_first = ["/api/*"]
 
-# 04:00 i 14:00 UTC = 06:00 i 16:00 po zagrebačkom ljetnom vremenu (zimi 05:00 i 15:00).
-# Jutarnje pokretanje šalje i podsjetnik "danas bez struje".
+# HEP: 04:00 i 14:00 UTC = 06:00 i 16:00 po zagrebačkom ljetnom vremenu (zimi 05:00 i 15:00).
+# VIO: svaki sat u :20 od 05 do 19 UTC, jer VIO prekide vode objavljuje i istog dana.
+# Svako pokretanje šalje push; jutarnja (prije podne) šalju i podsjetnik "danas bez struje/vode".
 [triggers]
-crons = ["0 4,14 * * *"]
+crons = ["0 4,14 * * *", "20 5-19 * * *"]
 
 [[d1_databases]]
 binding = "DB"

@@ -48,6 +48,9 @@ export function planPushes(
     for (const sub of subs) {
       const match = matchNotice(notice, sub.address);
       if (!match) continue;
+      // "Možda i vi" za cijeli grad Samobor bila bi poruka tisućama ljudi zbog jedne ulice:
+      // takve obavijesti prikazujemo u aplikaciji, ali ih ne šaljemo kao push.
+      if (match === "place" && sub.address.place === "Samobor" && notice.partial) continue;
       const key = (k: DeliveryKind) => `${notice.id}|${sub.id}|${k}`;
 
       const announced = delivered.has(key("najava"));
@@ -81,22 +84,27 @@ export function formatDay(iso: string, today: string): string {
 
 export function pushPayload(p: PlannedPush, today: string) {
   const { notice, kind } = p;
+  const water = notice.source === "vio";
+  const what = water ? "vode" : "struje";
+  const who = water ? "VIO" : "HEP";
   const when = formatDay(notice.date, today);
   const time = notice.start && notice.end ? ` ${notice.start}–${notice.end}` : "";
   const fault = notice.kind === "struja-kvar";
   const title =
     kind === "danas"
-      ? `Danas bez struje${time}`
+      ? `Danas bez ${what}${time}`
       : fault
-        ? `Kvar: ${when.toLowerCase()} bez struje${time}`
-        : `${when} bez struje${time}`;
-  const where =
+        ? `Kvar: ${when.toLowerCase()} bez ${what}${time}`
+        : `${when} bez ${what}${time}`;
+  const addr = `${p.sub.address.street}${p.sub.address.houseNumber ? " " + p.sub.address.houseNumber : ""}`;
+  let body =
     p.match === "place"
       ? `Radovi u naselju ${p.sub.address.place}. Moguće je da obuhvaćaju i vašu adresu.`
-      : `Radovi HEP-a obuhvaćaju ${p.sub.address.street}${p.sub.address.houseNumber ? " " + p.sub.address.houseNumber : ""}.`;
+      : `Radovi ${who === "HEP" ? "HEP-a" : "VIO-a"} obuhvaćaju ${addr}.`;
+  if (water && notice.note && /cistern/i.test(notice.note)) body += " Autocisterna će biti na terenu.";
   return {
     title,
-    body: where,
+    body,
     tag: `${notice.id}-${kind}`,
     url: `/?n=${notice.id}`,
   };

@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Samobor – struja</title>
-<meta name="description" content="Najavljena isključenja struje za vašu adresu u Samoboru, s obavijestima na mobitel.">
+<title>Samobor</title>
+<meta name="description" content="Struja, voda i odvoz otpada za vašu adresu u Samoboru, na jednom mjestu, s obavijestima na mobitel.">
 <meta name="theme-color" content="#1E2A23">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/favicon.png" type="image/png">
@@ -25,6 +25,13 @@
     --svjetlo: #F4C430;
     --mrak: #262D3A;
     --kvar: #B3261E;
+    /* boje spremnika za otpad */
+    --k-m: #3D433F;
+    --k-b: #7A5230;
+    --k-pa: #2F6DB5;
+    --k-pe: #E0B000;
+    --k-r: #3F8A5A;
+    --voda: #2E86B3;
     --display: "Bricolage Grotesque", system-ui, sans-serif;
     --tekst: "Atkinson Hyperlegible", system-ui, sans-serif;
     --r-malo: 6px;
@@ -32,73 +39,65 @@
   }
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
-  body {
-    margin: 0; background: var(--papir); color: var(--tinta);
-    font: 400 1.0625rem/1.55 var(--tekst);
-  }
+  body { margin: 0; background: var(--papir); color: var(--tinta); font: 400 1.0625rem/1.55 var(--tekst); }
   a { color: var(--gradna); text-underline-offset: 2px; }
   :focus-visible { outline: 3px solid var(--gradna); outline-offset: 2px; }
-  .omot { max-width: 560px; margin: 0 auto; padding: 0 20px; }
+  .omot { max-width: 600px; margin: 0 auto; padding: 0 20px; }
 
-  /* Zaglavlje */
   header.vrh { display: flex; align-items: baseline; justify-content: space-between; padding: 18px 0 14px; }
   .znak { font: 800 1.25rem/1 var(--display); letter-spacing: -0.01em; color: var(--tinta); text-decoration: none; }
-  nav.moduli { display: flex; gap: 16px; font-size: 0.95rem; }
-  nav.moduli a { color: var(--tinta-2); text-decoration: none; }
-  nav.moduli a[aria-current="page"] { color: var(--tinta); font-weight: 700; }
+  nav.vanjske { display: flex; gap: 16px; font-size: 0.95rem; }
+  nav.vanjske a { color: var(--tinta-2); text-decoration: none; }
+  nav.vanjske a:hover { color: var(--tinta); text-decoration: underline; }
 
   /* Stanje: "žarulja". Jedini glasni element na stranici. */
   .stanje {
-    position: relative; overflow: hidden;
-    border-radius: var(--r-veliko);
-    padding: 34px 26px 28px; margin: 6px 0 28px;
+    position: relative; overflow: hidden; border-radius: var(--r-veliko);
+    padding: 30px 24px 24px; margin: 6px 0 8px;
     background: #FFF8DC; color: var(--tinta);
     transition: background-color 600ms ease, color 600ms ease;
   }
-  .stanje::before { /* sjaj */
+  .stanje::before {
     content: ""; position: absolute; width: 360px; height: 360px; right: -120px; top: -150px;
     background: radial-gradient(circle, rgba(244,196,48,.55) 0%, rgba(244,196,48,0) 65%);
     transition: opacity 600ms ease; pointer-events: none;
   }
-  .stanje h1 {
-    position: relative; margin: 0; max-width: 18ch;
-    font: 800 clamp(2rem, 8.4vw, 2.75rem)/1.04 var(--display); letter-spacing: -0.025em;
-  }
-  .stanje p { position: relative; margin: 14px 0 0; max-width: 42ch; color: var(--tinta-2); }
-  .stanje .adresa-tag { font-weight: 700; color: inherit; }
+  .stanje .dan { position: relative; margin: 0 0 6px; color: var(--tinta-2); font-size: 0.95rem; }
+  .stanje h1 { position: relative; margin: 0; max-width: 19ch; font: 800 clamp(1.9rem, 8vw, 2.6rem)/1.05 var(--display); letter-spacing: -0.025em; }
+  .stanje p.uz { position: relative; margin: 12px 0 0; max-width: 44ch; color: var(--tinta-2); }
   .stanje.mrak { background: var(--mrak); color: #F3F1E8; }
   .stanje.mrak::before { opacity: 0; }
-  .stanje.mrak p { color: #C9CFD9; }
+  .stanje.mrak .dan, .stanje.mrak p.uz { color: #C9CFD9; }
   .stanje.kvar { box-shadow: inset 0 0 0 3px var(--kvar); }
   .stanje.prazno { background: #ECEEE7; }
   .stanje.prazno::before { opacity: .35; }
-  .stanje .sljedece { position: relative; margin-top: 18px; display: grid; gap: 6px; }
-  .stanje .sljedece div { font-size: 0.95rem; color: #C9CFD9; }
 
-  /* Odjeljci */
-  section.dio { padding: 4px 0 26px; border-top: 1px solid var(--crta); }
-  section.dio:first-of-type { border-top: 0; }
-  h2 { font: 700 1.3rem/1.2 var(--display); letter-spacing: -0.01em; margin: 22px 0 6px; }
+  .adresa-red { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 2px 18px; }
+  .adresa-red .gdje { font-weight: 700; }
+  .adresa-red .gdje span { font-weight: 400; color: var(--tinta-2); }
+
+  section.dio { padding: 4px 0 24px; border-top: 1px solid var(--crta); }
+  h2 { font: 700 1.3rem/1.2 var(--display); letter-spacing: -0.01em; margin: 22px 0 8px; }
+  h3 { font: 700 1.08rem/1.25 var(--display); margin: 0; }
   .napomena { color: var(--tinta-2); font-size: 0.95rem; margin: 0 0 14px; }
+  .sitno { color: var(--tinta-2); font-size: 0.88rem; }
 
   /* Obrazac adrese */
   form.adresa { display: grid; gap: 14px; }
   label.polje { display: grid; gap: 6px; font-weight: 700; font-size: 0.95rem; }
   label.polje span.pomoc { font-weight: 400; color: var(--tinta-2); }
+  label.kbr input { max-width: 9rem; }
   input, select {
-    font: inherit; color: var(--tinta); width: 100%;
-    padding: 12px 14px; border: 1.5px solid #B9C0B4; border-radius: var(--r-malo);
-    background: #fff; min-height: 48px;
+    font: inherit; color: var(--tinta); width: 100%; padding: 12px 14px;
+    border: 1.5px solid #B9C0B4; border-radius: var(--r-malo); background: #fff; min-height: 48px;
   }
   input:focus, select:focus { border-color: var(--gradna); outline: none; box-shadow: 0 0 0 3px rgba(46,106,134,.2); }
   input[aria-invalid="true"] { border-color: var(--kvar); }
-  label.kbr input { max-width: 9rem; }
   .greska { color: var(--kvar); font-size: 0.95rem; margin: 0; }
 
   button {
-    font: 700 1rem/1 var(--tekst); cursor: pointer;
-    min-height: 48px; padding: 0 20px; border-radius: var(--r-malo);
-    border: 1.5px solid transparent;
+    font: 700 1rem/1 var(--tekst); cursor: pointer; min-height: 48px; padding: 0 20px;
+    border-radius: var(--r-malo); border: 1.5px solid transparent;
   }
   .gumb { background: var(--gradna); color: #fff; }
   .gumb:hover { background: var(--gradna-tamna); }
@@ -107,8 +106,32 @@
   .gumb:disabled, .gumb-tihi:disabled { opacity: .55; cursor: default; }
   .gumbi { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 
-  .sazetak { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-  .sazetak strong { font-size: 1.1rem; }
+  /* Vremenska crta */
+  ol.crta { list-style: none; margin: 0; padding: 0; }
+  ol.crta > li { display: grid; grid-template-columns: 6.2rem 1fr; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--crta); }
+  ol.crta > li:last-child { border-bottom: 0; }
+  .crta .kad { font-weight: 700; line-height: 1.3; }
+  .crta .kad small { display: block; font-weight: 400; color: var(--tinta-2); font-size: 0.85rem; }
+  .crta ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .stavka { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; }
+  .stavka svg { width: 22px; height: 22px; margin-top: 1px; }
+  .stavka b { font-weight: 700; }
+  .stavka .opis { display: block; color: var(--tinta-2); font-size: 0.92rem; }
+  .stavka.hitno b { color: var(--kvar); }
+  .prazan-dan { color: var(--tinta-2); }
+
+  /* Teme */
+  .tema { padding: 16px 0; border-bottom: 1px solid var(--crta); }
+  .tema:last-child { border-bottom: 0; }
+  .tema-glava { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .tema-glava svg { width: 24px; height: 24px; flex: none; }
+  .tema p { margin: 4px 0 0; }
+  .vrste { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+  .vrste li { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; }
+  .vrste li span:last-child { font-weight: 700; text-align: right; }
+  .zone { display: grid; gap: 8px; margin-top: 10px; }
+  .zone button { text-align: left; height: auto; padding: 10px 14px; line-height: 1.35; font-weight: 400; }
+  .zone button b { display: block; }
 
   /* Obavijesti */
   .ukljuceno { display: flex; gap: 10px; align-items: center; font-weight: 700; margin: 0 0 12px; }
@@ -117,15 +140,14 @@
   .uputa ol { margin: 6px 0 0; padding-left: 1.3em; }
   .poruka { font-size: 0.95rem; color: var(--tinta-2); margin: 10px 0 0; min-height: 1.4em; }
 
-  /* Popis isključenja */
+  /* Sve najave */
   ul.popis { list-style: none; margin: 0; padding: 0; }
-  ul.popis li { padding: 14px 0; border-bottom: 1px solid var(--crta); }
+  ul.popis li { padding: 12px 0; border-bottom: 1px solid var(--crta); }
   ul.popis li:last-child { border-bottom: 0; }
-  .kad { font-weight: 700; }
-  .kad .tip-kvar { color: var(--kvar); }
-  .gdje { color: var(--tinta-2); margin-top: 2px; overflow-wrap: anywhere; }
-  .moje { border-left: 4px solid var(--svjetlo); padding-left: 12px !important; margin-left: -16px; }
-  details summary { cursor: pointer; color: var(--gradna); font-weight: 700; padding: 6px 0; }
+  ul.popis .kad { font-weight: 700; }
+  ul.popis .tip-kvar { color: var(--kvar); }
+  ul.popis .gdje { color: var(--tinta-2); margin-top: 2px; overflow-wrap: anywhere; }
+  ul.popis li.moje { border-left: 4px solid var(--svjetlo); padding-left: 12px; margin-left: -16px; }
 
   footer.dno { padding: 22px 0 40px; border-top: 1px solid var(--crta); color: var(--tinta-2); font-size: 0.92rem; }
   footer.dno p { margin: 0 0 8px; }
@@ -138,8 +160,7 @@
 <div class="omot">
   <header class="vrh">
     <a class="znak" href="/">Samobor</a>
-    <nav class="moduli" aria-label="Moduli">
-      <a href="/" aria-current="page">Struja</a>
+    <nav class="vanjske" aria-label="Druge aplikacije">
       <a href="https://odvoz-otpada-samobor.opticora.hr/">Odvoz</a>
       <a href="https://autobusi-samobor.opticora.hr/">Autobusi</a>
     </nav>
@@ -147,37 +168,54 @@
 
   <main>
     <div class="stanje prazno" id="stanje" aria-live="polite">
-      <h1 id="stanje-naslov">Hoćete li imati struje?</h1>
-      <p id="stanje-tekst">Upišite adresu i javit ćemo vam čim HEP najavi isključenje u vašoj ulici.</p>
-      <div class="sljedece" id="stanje-dalje" hidden></div>
+      <p class="dan" id="stanje-dan"></p>
+      <h1 id="stanje-naslov">Što se događa na vašoj adresi?</h1>
+      <p class="uz" id="stanje-tekst">Upišite adresu i na jednom mjestu vidjet ćete isključenja struje i vode te odvoz otpada.</p>
+    </div>
+
+    <div class="adresa-red" id="adresa-sazetak" hidden>
+      <div class="gdje" id="adresa-tekst"></div>
+      <button class="gumb-tihi" type="button" id="adresa-promijeni">Promijeni adresu</button>
     </div>
 
     <section class="dio" id="dio-adresa">
       <h2>Vaša adresa</h2>
-      <div id="adresa-sazetak" class="sazetak" hidden>
-        <strong id="adresa-tekst"></strong>
-        <button class="gumb-tihi" type="button" id="adresa-promijeni">Promijeni</button>
-      </div>
       <form class="adresa" id="adresa-obrazac" novalidate>
         <label class="polje">Naselje
           <select id="naselje" required></select>
         </label>
-        <label class="polje" id="ulica-polje">Ulica
+        <label class="polje">Ulica
           <input id="ulica" list="ulice" autocomplete="off" autocapitalize="words" required>
           <span class="pomoc" id="ulica-pomoc"></span>
         </label>
         <datalist id="ulice"></datalist>
         <label class="polje kbr">Kućni broj <span class="pomoc">nije obavezno, ali s njim su obavijesti točnije</span>
-          <input id="kbr" inputmode="text" autocomplete="off" maxlength="12" placeholder="npr. 12A">
+          <input id="kbr" autocomplete="off" maxlength="12" placeholder="npr. 12A">
         </label>
         <p class="greska" id="adresa-greska" role="alert" hidden></p>
-        <div class="gumbi"><button class="gumb" type="submit">Spremi adresu</button></div>
+        <div class="gumbi">
+          <button class="gumb" type="submit">Spremi adresu</button>
+          <button class="gumb-tihi" type="button" id="adresa-odustani" hidden>Odustani</button>
+        </div>
       </form>
+    </section>
+
+    <section class="dio" id="dio-crta" hidden>
+      <h2>Sljedeća dva tjedna</h2>
+      <ol class="crta" id="crta"></ol>
+    </section>
+
+    <section class="dio" id="dio-teme" hidden>
+      <h2>Po temama</h2>
+      <div class="tema" id="tema-struja"></div>
+      <div class="tema" id="tema-voda"></div>
+      <div class="tema" id="tema-otpad"></div>
+      <div class="tema" id="tema-autobusi"></div>
     </section>
 
     <section class="dio" id="dio-obavijesti" hidden>
       <h2>Obavijesti na mobitel</h2>
-      <p class="napomena">Dobit ćete poruku čim HEP najavi isključenje za vašu adresu, i još jednu ujutro na taj dan.</p>
+      <p class="napomena">Javit ćemo vam čim HEP ili VIO najave isključenje struje ili vode za vašu adresu, i još jednom ujutro na taj dan.</p>
       <div id="ios-uputa" class="uputa" hidden>
         Na iPhoneu obavijesti rade tek kad je stranica dodana na početni zaslon:
         <ol>
@@ -196,16 +234,16 @@
     </section>
 
     <section class="dio" id="dio-svi">
-      <h2>Sva najavljena isključenja</h2>
-      <p class="napomena" id="svi-napomena">Područje HEP-ove terenske jedinice Samobor, sljedećih sedam dana.</p>
+      <h2>Sve najave na području Samobora</h2>
+      <p class="napomena" id="svi-napomena">Isključenja struje (HEP) i vode (VIO) za cijelo područje, ne samo vašu adresu.</p>
       <ul class="popis" id="svi-popis"></ul>
     </section>
   </main>
 
   <footer class="dno">
-    <p>Podaci: <a href="https://www.hep.hr/ods/bez-struje/19?dp=zagreb&amp;el=115">HEP ODS, Bez struje</a>. Provjerava se dvaput dnevno.</p>
+    <p>Podaci: <a href="https://www.hep.hr/ods/bez-struje/19?dp=zagreb&amp;el=115">HEP ODS</a>, <a href="https://www.vio.hr/obavijesti/privremeni-prekid-u-opskrbi-vodom-zbog-radova/1833">Vodoopskrba i odvodnja</a> i raspored odvoza Komunalca Samobor.</p>
     <p id="provjereno"></p>
-    <p>Neslužbena aplikacija. Za kvar i hitne slučajeve nazovite HEP na 0800 300 401.</p>
+    <p>Neslužbena aplikacija. Kvar struje prijavite HEP-u na 0800 300 401, kvar vode VIO-u na 072 500 400.</p>
   </footer>
 </div>
 <script src="/app.js" type="module"></script>

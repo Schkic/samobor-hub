@@ -11,6 +11,9 @@ import {
   sendPush,
 } from "./core/push";
 import { fetchHepDay, HEP_SAMOBOR } from "./sources/hep";
+import { fetchVio } from "./sources/vio";
+import { fetchOdvoz, resolveZone, zoneOverview } from "./sources/odvoz";
+import { buildTimeline, type MatchedNotice } from "./core/dashboard";
 import { TOWN, TOWN_STREETS, VILLAGES } from "./data/addresses";
 
 export interface Env {
@@ -39,6 +42,26 @@ async function runHep(env: Env): Promise<{ found: number; added: Notice[] }> {
   return { found, added };
 }
 
+/**
+ * VIO prekide vode objavljuje i istog dana, pa se gleda svaki sat. Sinkronizira se
+ * svaki datum koji je u tablici (i onaj sa samo završenim radovima), da se završeni
+ * i otkazani radovi uklone iz baze.
+ */
+async function runVio(env: Env): Promise<{ found: number; added: Notice[] }> {
+  try {
+    const { notices, dates } = await fetchVio();
+    const added: Notice[] = [];
+    for (const d of dates) {
+      added.push(...(await syncDay(env.DB, "vio", d, notices.filter((n) => n.date === d))));
+    }
+    await logRun(env.DB, "vio", true, notices.length);
+    return { found: notices.length, added };
+  } catch (err) {
+    await logRun(env.DB, "vio", false, 0, String(err));
+    throw err;
+  }
+}
+
 /** Sat u Zagrebu (0–23), za razlikovanje jutarnjeg i popodnevnog pokretanja. */
 function zagrebHour(now = new Date()): number {
   return Number(
@@ -46,19 +69,26 @@ function zagrebHour(now = new Date()): number {
   );
 }
 
-async function runAll(env: Env) {
-  // Scraper i slanje su odvojeni: ako HEP padne, i dalje šaljemo za ono što već imamo
-  let hep = "";
-  try {
-    const { found, added } = await runHep(env);
-    hep = `HEP: ${found} obavijesti, ${added.length} novih`;
-  } catch (e) {
-    hep = `HEP greška: ${e}`;
+/** Cron izraz za HEP (vidi wrangler.toml); svi ostali okidaju samo VIO. */
+const HEP_CRON = "0 4,14 * * *";
+
+async function runAll(env: Env, cron: string) {
+  // Izvori i slanje su odvojeni: ako jedan izvor padne, i dalje šaljemo za ono što već imamo
+  const log: string[] = [];
+  const jobs: [string, () => Promise<{ found: number; added: Notice[] }>][] = [["VIO", () => runVio(env)]];
+  if (cron === HEP_CRON) jobs.unshift(["HEP", () => runHep(env)]);
+  for (const [name, job] of jobs) {
+    try {
+      const { found, added } = await job();
+      log.push(`${name}: ${found} obavijesti, ${added.length} novih`);
+    } catch (e) {
+      log.push(`${name} greška: ${e}`);
+    }
   }
   const today = todayZagreb();
   const notices = await upcomingNotices(env.DB, today);
   const push = await deliver(env.DB, notices, today, zagrebHour() < 12);
-  console.log(`${hep}; push: ${push.sent} poslano, ${push.gone} odjavljeno, ${push.errors} grešaka`);
+  console.log(`${log.join("; ")}; push: ${push.sent} poslano, ${push.gone} odjavljeno, ${push.errors} grešaka`);
 }
 
 // ---------------------------------------------------------------------------
@@ -114,6 +144,48 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
       .map((n) => ({ ...n, match: matchNotice(n, addr) }))
       .filter((n) => n.match !== null);
     return json(matched, 200, "public, max-age=60");
+  }
+
+  // GET /api/dashboard?place=&street=&house=&zone= → sve za jednu adresu
+  if (path === "/api/dashboard" && req.method === "GET") {
+    const address = parseAddress({
+      place: url.searchParams.get("place"),
+      street: url.searchParams.get("street"),
+      houseNumber: url.searchParams.get("house") ?? "",
+    });
+    if (typeof address === "string") return bad(address);
+    const today = todayZagreb();
+    const until = dateRange(today, 15).pop()!;
+
+    const all = await upcomingNotices(env.DB, today);
+    const matched: MatchedNotice[] = [];
+    for (const n of all) {
+      const m = matchNotice(n, address);
+      if (m) matched.push({ ...n, match: m });
+    }
+
+    const odvozData = await fetchOdvoz(env.DB);
+    let odvoz = null;
+    if (odvozData) {
+      const zone = resolveZone(odvozData.data, address.place, address.street, address.houseNumber, url.searchParams.get("zone") ?? undefined);
+      const overview = zone.zone ? zoneOverview(odvozData.data, zone.zone, today, until) : null;
+      odvoz = { zone: zone.zone, options: zone.options, overview, fetchedAt: odvozData.fetchedAt };
+    }
+
+    const runs = await env.DB.prepare(
+      "SELECT source, MAX(ran_at) AS ran_at FROM source_runs WHERE ok = 1 GROUP BY source",
+    ).all<{ source: string; ran_at: string }>();
+    const lastRun = Object.fromEntries(runs.results.map((r) => [r.source, r.ran_at]));
+
+    return json({
+      address,
+      today,
+      timeline: buildTimeline(matched, odvoz?.overview ?? null, today, until),
+      struja: matched.filter((n) => n.source === "hep"),
+      voda: matched.filter((n) => n.source === "vio"),
+      odvoz,
+      sources: { hep: lastRun.hep ?? null, vio: lastRun.vio ?? null, odvoz: odvozData?.fetchedAt ?? null },
+    }, 200, "private, max-age=60");
   }
 
   // GET /api/addresses → popis naselja i ulica za odabir adrese
@@ -173,8 +245,8 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
 }
 
 export default {
-  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(runAll(env));
+  async scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(runAll(env, event.cron));
   },
 
   async fetch(req: Request, env: Env): Promise<Response> {

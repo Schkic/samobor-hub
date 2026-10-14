@@ -9,9 +9,10 @@ baza, API i poklapanje s adresom korisnika su zajednički.
 | Izvor | Status | Odakle |
 |---|---|---|
 | HEP – isključenja struje | ✅ gotovo | `hep.hr/ods/bez-struje/19?dp=zagreb&el=115&datum=DD.MM.YYYY` (TJ Samobor) |
-| VIO – prekidi vode | sljedeće | HTML tablica na vio.hr |
-| Komunalac – dezinsekcija | kasnije | PDF obavijesti |
-| Odvoz otpada | postojeća app | — |
+| VIO – prekidi vode | ✅ gotovo | tablica na vio.hr, filtrirana na Samobor i naselja; svaki sat |
+| Odvoz otpada | ✅ samo čitanje | javni `data.json` aplikacije za odvoz (aplikacija se ne dira) |
+| Autobusi | poveznica | aplikacija autobusi-samobor.opticora.hr |
+| Događanja | kasnije | TZ Samobor, POU, knjižnica |
 
 ## Struktura
 
@@ -49,7 +50,7 @@ Kad nije siguran, radije javi nego propusti.
 
 ```bash
 npm install
-npm test                         # 30 testova
+npm test                         # 42 testa
 # D1 baza već postoji (database_id je u wrangler.toml)
 npm run db:init                  # schema.sql (već pokrenuta, idempotentno)
 npm run dev                      # lokalno; cron: curl "localhost:8787/__scheduled"
@@ -60,6 +61,7 @@ npm run deploy
 
 - `GET /api/notices` – sve nadolazeće obavijesti
 - `GET /api/notices?place=Samobor&street=Ulica%20grada%20Wirgesa&house=12` – samo za tu adresu, s poljem `match`
+- `GET /api/dashboard?place=&street=&house=&zone=` – sve za adresu: vremenska crta (14 dana), struja, voda, zona i raspored odvoza
 - `GET /api/status` – zadnja pokretanja scrapera i broj pretplata
 - `GET /api/addresses` – naselja i ulice za odabir adrese
 - `GET /api/vapid` – javni ključ za `pushManager.subscribe()`

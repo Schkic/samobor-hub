@@ -11,7 +11,7 @@ self.addEventListener("push", (event) => {
   } catch {
     data = { title: "Samobor", body: event.data ? event.data.text() : "" };
   }
-  const title = data.title || "Samobor – struja";
+  const title = data.title || "Samobor";
   event.waitUntil(
     self.registration.showNotification(title, {
       body: data.body || "",
