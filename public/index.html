@@ -128,6 +128,16 @@
   .tema-glava { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
   .tema-glava svg { width: 24px; height: 24px; flex: none; }
   .tema p { margin: 4px 0 0; }
+  .bus-linija { margin: 10px 0 0; }
+  .bus-naslov { display: flex; gap: 8px; align-items: baseline; font-weight: 700; }
+  .bus-oznaka { flex: none; font: 800 0.8rem/1 var(--display); color: #fff; background: var(--gradna); border-radius: 4px; padding: 3px 6px; }
+  .bus-smjerovi, .bus-ploca { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; }
+  .bus-smjerovi li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 12px; }
+  .bus-smjerovi li > span:first-child { color: var(--tinta-2); font-size: 0.95rem; }
+  .bus-vremena { display: flex; gap: 10px; align-items: baseline; font-variant-numeric: tabular-nums; }
+  .bus-vremena sup { color: var(--tinta-2); }
+  .bus-sutra, .bus-nema { color: var(--tinta-2); font-size: 0.88rem; }
+  .bus-ploca li { display: grid; grid-template-columns: 3.2rem auto 1fr; gap: 10px; align-items: baseline; font-variant-numeric: tabular-nums; }
   .vrste { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
   .vrste li { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; }
   .vrste li span:last-child { font-weight: 700; text-align: right; }

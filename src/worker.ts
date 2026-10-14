@@ -17,6 +17,7 @@ import { fetchHepDay, HEP_SAMOBOR } from "./sources/hep";
 import { parseVioHtml, vioToNotices } from "./sources/vio";
 import { verifyGithubOidc } from "./core/oidc";
 import { fetchOdvoz, resolveZone, zoneOverview } from "./sources/odvoz";
+import { busOverview, fetchBus, nowMinutesZagreb } from "./sources/bus";
 import { buildTimeline, type MatchedNotice } from "./core/dashboard";
 import { TOWN, TOWN_STREETS, VILLAGES } from "./data/addresses";
 
@@ -204,6 +205,10 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
       odvoz = { zone: zone.zone, options: zone.options, overview, fetchedAt: odvozData.fetchedAt };
     }
 
+    // Autobusi: vozni red iz aplikacije Autobusi (samo čitanje). Greška ne ruši pregled.
+    const busData = await fetchBus(env.DB).catch(() => null);
+    const bus = busData ? busOverview(busData.data, address, today, nowMinutesZagreb()) : null;
+
     const runs = await env.DB.prepare(
       "SELECT source, MAX(ran_at) AS ran_at FROM source_runs WHERE ok = 1 GROUP BY source",
     ).all<{ source: string; ran_at: string }>();
@@ -216,6 +221,7 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
       struja: matched.filter((n) => n.source === "hep"),
       voda: matched.filter((n) => n.source === "vio"),
       odvoz,
+      bus,
       sources: { hep: lastRun.hep ?? null, vio: lastRun.vio ?? null, odvoz: odvozData?.fetchedAt ?? null },
     }, 200, "private, max-age=60");
   }

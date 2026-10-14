@@ -11,7 +11,7 @@ baza, API i poklapanje s adresom korisnika su zajednički.
 | HEP – isključenja struje | ✅ gotovo | `hep.hr/ods/bez-struje/19?dp=zagreb&el=115&datum=DD.MM.YYYY` (TJ Samobor) |
 | VIO – prekidi vode | ✅ gotovo | tablica na vio.hr, filtrirana na Samobor i naselja; svaki sat preko GitHub Actions (vio.hr Cloudflareu vraća prazan odgovor), hub provjerava GitHubov OIDC token |
 | Odvoz otpada | ✅ samo čitanje | javni `data.json` aplikacije za odvoz (aplikacija se ne dira) |
-| Autobusi | poveznica | aplikacija autobusi-samobor.opticora.hr |
+| Autobusi (Samoborček) | ✅ samo čitanje | javni `data.json` aplikacije Autobusi; linije čija stanica odgovara naselju/ulici, sljedeći polasci prema vrsti dana (radni / subota / nedjelja i blagdan, s Uskrsom i Tijelovom) |
 | Događanja | kasnije | TZ Samobor, POU, knjižnica |
 
 ## Struktura
@@ -23,6 +23,7 @@ src/
   core/store.ts     D1: syncDay (nove/otkazane obavijesti), upit
   core/dates.ts     datumi u Europe/Zagreb
   sources/hep.ts    HEP scraper (čisti parser + fetch)
+  sources/bus.ts    vozni red Samoborčeka: stanice ↔ adresa, sljedeći polasci, blagdani
   worker.ts         cron + API
 test/               node:test, fixture-i su stvarni HEP odgovori
 ```
@@ -50,7 +51,7 @@ Kad nije siguran, radije javi nego propusti.
 
 ```bash
 npm install
-npm test                         # 46 testova
+npm test                         # 53 testa
 # D1 baza već postoji (database_id je u wrangler.toml)
 npm run db:init                  # schema.sql (već pokrenuta, idempotentno)
 npm run dev                      # lokalno; cron: curl "localhost:8787/__scheduled"
@@ -61,7 +62,7 @@ npm run deploy
 
 - `GET /api/notices` – sve nadolazeće obavijesti
 - `GET /api/notices?place=Samobor&street=Ulica%20grada%20Wirgesa&house=12` – samo za tu adresu, s poljem `match`
-- `GET /api/dashboard?place=&street=&house=&zone=` – sve za adresu: vremenska crta (14 dana), struja, voda, zona i raspored odvoza
+- `GET /api/dashboard?place=&street=&house=&zone=` – sve za adresu: vremenska crta (14 dana), struja, voda, zona i raspored odvoza, sljedeći autobusi
 - `GET /api/status` – zadnja pokretanja scrapera i broj pretplata
 - `GET /api/addresses` – naselja i ulice za odabir adrese
 - `GET /api/vapid` – javni ključ za `pushManager.subscribe()`

@@ -323,12 +323,62 @@ function temaOtpad(d) {
   }
 }
 
-function temaAutobusi() {
+function temaAutobusi(d) {
   const box = $("tema-autobusi");
   box.innerHTML = "";
-  box.append(el("div", { className: "tema-glava" }, ikona("bus", BOJA.bus), el("h3", { textContent: "Autobusi" })));
-  box.append(el("p", {}, "Vozni red Samoborčeka i Autoturista: ",
-    el("a", { href: "https://autobusi-samobor.opticora.hr/", textContent: "otvori aplikaciju Autobusi" }), "."));
+  const b = d.bus;
+  box.append(el("div", { className: "tema-glava" }, ikona("bus", BOJA.bus), el("h3", { textContent: "Autobusi" }),
+    b ? el("span", { className: "sitno", textContent: `· ${b.dayLabel}` }) : ""));
+  const aplikacija = el("a", { href: "https://autobusi-samobor.opticora.hr/", textContent: "aplikaciji Autobusi" });
+  if (!b) {
+    box.append(el("p", {}, "Vozni red se trenutno ne može učitati. Polaske potražite u ", aplikacija, "."));
+    return;
+  }
+  const vremena = (dir) => {
+    if (!dir.next.length) return el("span", { className: "bus-nema", textContent: "danas i sutra nema polazaka" });
+    const span = el("span", { className: "bus-vremena" });
+    if (dir.tomorrow) span.append(el("span", { className: "bus-sutra", textContent: "sutra" }));
+    for (const dep of dir.next) {
+      span.append(el("b", { textContent: dep.time, title: dep.note ?? "" }, dep.note ? el("sup", { textContent: "*" }) : ""));
+    }
+    return span;
+  };
+
+  if (b.mode === "nema") {
+    box.append(el("p", {}, `Kroz ${adresa.place} ne prolazi gradska linija Samoborčeka. Autoturist i ostale linije su u `, aplikacija, "."));
+    return;
+  }
+
+  if (b.mode === "kolodvor") {
+    box.append(el("p", { textContent: "Uz vašu ulicu nema stanice gradskih linija. Sljedeći polasci s autobusnog kolodvora (Samobor AK):" }));
+    const ul = el("ul", { className: "bus-ploca" });
+    for (const r of b.board) {
+      ul.append(el("li", {}, el("b", {}, r.time, r.note ? el("sup", { textContent: "*" }) : ""),
+        el("span", { className: "bus-oznaka", textContent: r.line }),
+        el("span", { textContent: `→ ${r.to}${r.tomorrow ? " (sutra)" : ""}` })));
+    }
+    box.append(ul);
+    const biljeske = [...new Set(b.board.filter((r) => r.note).map((r) => `${r.line}: ${r.note}`))];
+    for (const n of biljeske) box.append(el("p", { className: "sitno", textContent: `* ${n}` }));
+  } else {
+    const prikaz = b.lines.slice(0, 4);
+    for (const l of prikaz) {
+      const blok = el("div", { className: "bus-linija" });
+      blok.append(el("p", { className: "bus-naslov" }, el("span", { className: "bus-oznaka", textContent: l.id }), el("span", { textContent: l.name })));
+      if (l.note) blok.append(el("p", { className: "sitno", textContent: l.note }));
+      const ul = el("ul", { className: "bus-smjerovi" });
+      for (const dir of l.dirs) ul.append(el("li", {}, el("span", { textContent: `${dir.from} → ${dir.to}` }), vremena(dir)));
+      blok.append(ul);
+      const biljeske = [...new Set(l.dirs.flatMap((x) => x.next.map((n) => n.note).filter(Boolean)))];
+      for (const n of biljeske) blok.append(el("p", { className: "sitno", textContent: `* ${n}` }));
+      box.append(blok);
+    }
+    if (b.lines.length > prikaz.length) {
+      box.append(el("p", { className: "sitno", textContent: `I još ${b.lines.length - prikaz.length} ${b.lines.length - prikaz.length === 1 ? "linija" : "linije"}: ${b.lines.slice(4).map((l) => l.id).join(", ")}.` }));
+    }
+    box.append(el("p", { className: "sitno", textContent: "Vremena su polasci s početne stanice; do vaše stanice autobus stiže nekoliko minuta kasnije." }));
+  }
+  box.append(el("p", { className: "sitno" }, "Samoborček, gradske linije. Cijeli vozni red i Autoturist su u ", aplikacija, "."));
 }
 
 async function osvjezi() {
@@ -345,7 +395,7 @@ async function osvjezi() {
       temaIskljucenja("tema-struja", "Struja", "struja", d.struja, "HEP", d.sources.hep);
       temaIskljucenja("tema-voda", "Voda", "voda", d.voda, "VIO", d.sources.vio);
       temaOtpad(d);
-      temaAutobusi();
+      temaAutobusi(d);
       renderSve(new Set([...d.struja, ...d.voda].map((n) => n.id)));
     } catch (e) {
       $("stanje-naslov").textContent = "Podaci se trenutno ne mogu učitati.";
