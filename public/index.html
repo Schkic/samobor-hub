@@ -113,8 +113,10 @@
   .crta .kad { font-weight: 700; line-height: 1.3; }
   .crta .kad small { display: block; font-weight: 400; color: var(--tinta-2); font-size: 0.85rem; }
   .crta ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-  .stavka { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; }
-  .stavka svg { width: 22px; height: 22px; margin-top: 1px; }
+  .stavka { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; }
+  .stavka .ikone { display: flex; min-width: 22px; margin-top: 1px; }
+  .stavka .ikone svg { width: 22px; height: 22px; }
+  .stavka .ikone svg + svg { margin-left: -6px; }
   .stavka b { font-weight: 700; }
   .stavka .opis { display: block; color: var(--tinta-2); font-size: 0.92rem; }
   .stavka.hitno b { color: var(--kvar); }

@@ -84,8 +84,9 @@ function ikona(vrsta, boja) {
 }
 /** Ikona za stavku crte: kanta u boji spremnika (ili više kanti za više vrsta). */
 function ikonaStavke(s) {
-  if (s.kind === "odvoz") return ikona("kanta", BOJA[s.waste?.[0]] ?? "var(--k-m)");
-  return ikona(s.kind, BOJA[s.kind]);
+  if (s.kind !== "odvoz") return el("span", { className: "ikone" }, ikona(s.kind, BOJA[s.kind]));
+  // jedna kanta po vrsti, u boji spremnika
+  return el("span", { className: "ikone" }, ...(s.waste ?? ["m"]).map((t) => ikona("kanta", BOJA[t])));
 }
 
 // ---------------------------------------------------------------- adrese
@@ -297,9 +298,11 @@ function temaOtpad(d) {
     return;
   }
   const ul = el("ul", { className: "vrste" });
-  for (const n of o.overview.next) {
+  const poDatumu = [...o.overview.next].sort((a, b) => (a.date ?? "9").localeCompare(b.date ?? "9"));
+  for (const n of poDatumu) {
+    const kad = !n.date ? "nema termina" : razlika(n.date) <= 1 ? danOznaka(n.date)[0] : danOznaka(n.date).join(" ");
     ul.append(el("li", {}, ikona("kanta", BOJA[n.type]), el("span", { textContent: OZNAKE[n.type] }),
-      el("span", { textContent: n.date ? kada(n.date) : "nema termina" })));
+      el("span", { textContent: kad })));
   }
   box.append(ul);
   const yard = o.overview.yard[0];
