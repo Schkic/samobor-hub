@@ -277,7 +277,8 @@ async function pretplati(postojeca, tiho = false) {
   try {
     let sub = postojeca;
     if (!sub) {
-      const dozvola = await Notification.requestPermission();
+      // Ako je dozvola ranije odbijena, preglednik više ne pita; to treba reći odmah
+      const dozvola = Notification.permission === "denied" ? "denied" : await Notification.requestPermission();
       if (dozvola !== "granted") {
         poruka("Obavijesti nisu dopuštene. Možete ih dopustiti u postavkama preglednika za ovu stranicu.");
         return;
