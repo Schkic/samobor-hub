@@ -1,0 +1,13 @@
+name = "samobor-hub"
+main = "src/worker.ts"
+compatibility_date = "2026-10-01"
+
+# 04:00 i 14:00 UTC = 06:00 i 16:00 po zagrebačkom ljetnom vremenu.
+# Dvaput dnevno jer HEP tijekom dana dodaje i otkazuje radove.
+[triggers]
+crons = ["0 4,14 * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "samobor-hub"
+database_id = "2a39c488-eb28-4612-a2da-32690750c8e3"

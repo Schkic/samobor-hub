@@ -1,0 +1,23 @@
+name: Testovi
+
+# Deploy radi Cloudflare Workers Builds (spojen na ovaj repo), bez API tokena.
+# Ovaj workflow samo provjerava tipove i pokreće testove na svaki push i PR.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
