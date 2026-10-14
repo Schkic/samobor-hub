@@ -16,6 +16,12 @@ run_worker_first = ["/api/*"]
 [triggers]
 crons = ["0 4,14 * * *"]
 
+# Javna adresa aplikacije. Cloudflare sam postavlja DNS zapis i certifikat (zona opticora.hr).
+# Push pretplate vezane su uz ovu adresu, pa je ne treba mijenjati bez razloga.
+[[routes]]
+pattern = "mojsamobor.opticora.hr"
+custom_domain = true
+
 [[d1_databases]]
 binding = "DB"
 database_name = "samobor-hub"
