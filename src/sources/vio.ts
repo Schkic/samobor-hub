@@ -31,7 +31,11 @@ const strip = (html: string) =>
     .trim();
 
 export function parseVioHtml(html: string): VioRow[] {
-  const table = /<table[^>]*class="[^"]*opskrba[^"]*"[^>]*>([\s\S]*?)<\/table>/i.exec(html);
+  // Tablicu tražimo po zaglavlju, ne po klasi: klase (npr. "opskrba") dodaje JavaScript tek u pregledniku,
+  // a Worker dobiva sirovi HTML s class="table table-striped table-bordered".
+  const table = [...html.matchAll(/<table[^>]*>([\s\S]*?)<\/table>/gi)].find(
+    (t) => /DATUM/i.test(t[1]) && /NASELJE/i.test(t[1]) && /STATUS/i.test(t[1]),
+  );
   if (!table) throw new Error("VIO: tablica prekida nije pronađena, struktura stranice se promijenila");
   const rows: VioRow[] = [];
   for (const tr of table[1].matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)) {
