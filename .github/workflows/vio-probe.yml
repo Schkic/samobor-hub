@@ -1,0 +1,19 @@
+name: VIO dohvat (test)
+
+# Privremeni test: vraća li vio.hr tablicu GitHubovim poslužiteljima
+# (Cloudflare Workerima vraća prazan odgovor).
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dohvati VIO stranicu
+        run: |
+          curl -sS -L -o vio.html -w "status=%{http_code} bytes=%{size_download}\n" \
+            -A "Mozilla/5.0 (compatible; samobor-hub/1.0; +https://opticora.hr)" \
+            "https://www.vio.hr/obavijesti/privremeni-prekid-u-opskrbi-vodom-zbog-radova/1833"
+          echo "tablica: $(grep -c '<table' vio.html || true)"
+          echo "DATUM: $(grep -c 'DATUM' vio.html || true)"
+          grep -o 'SAMOBOR' vio.html | wc -l | xargs echo "SAMOBOR redaka:"
