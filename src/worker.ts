@@ -248,6 +248,35 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
     if (!row || !row.value || given.length !== row.value.length || !timingSafeEqual(given, row.value)) {
       return json({ error: "not found" }, 404);
     }
+    // ?probe=1: dijagnostika dohvata VIO stranice s različitim zaglavljima
+    if (url.searchParams.get("probe")) {
+      const variants: Record<string, Record<string, string>> = {
+        bez: {},
+        hub: { "User-Agent": "samobor-hub (+https://opticora.hr)" },
+        chrome: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "hr-HR,hr;q=0.9,en;q=0.8",
+        },
+      };
+      const probe: Record<string, unknown> = {};
+      for (const [name, headers] of Object.entries(variants)) {
+        try {
+          const r = await fetch("https://www.vio.hr/obavijesti/privremeni-prekid-u-opskrbi-vodom-zbog-radova/1833", { headers, redirect: "follow" });
+          const h = await r.text();
+          probe[name] = {
+            status: r.status, url: r.url, bytes: h.length,
+            title: /<title[^>]*>([\s\S]*?)<\/title>/i.exec(h)?.[1]?.trim().slice(0, 80) ?? null,
+            tables: (h.match(/<table/gi) ?? []).length,
+            datum: h.includes("DATUM"),
+            head: h.slice(0, 200),
+          };
+        } catch (e) {
+          probe[name] = String(e);
+        }
+      }
+      return json(probe);
+    }
     const source = url.searchParams.get("source") ?? "all";
     const out: Record<string, unknown> = {};
     if (source === "vio" || source === "all") out.vio = await runVio(env).then((r) => ({ found: r.found, added: r.added.length })).catch((e) => String(e));
