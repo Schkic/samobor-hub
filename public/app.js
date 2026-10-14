@@ -37,9 +37,10 @@ const vrijeme = (n) => (n.start && n.end ? `od ${n.start} do ${n.end}` : "tijeko
 const opisAdrese = (a) => (a ? `${a.street}${a.houseNumber ? " " + a.houseNumber : ""}${a.place !== "Samobor" && a.street !== a.place ? ", " + a.place : ""}` : "");
 
 async function api(path, body) {
+  // GET uvijek provjerava svježinu kod poslužitelja, da gornje stanje i popis ne proturječe jedno drugom
   const res = await fetch(path, body ? {
     method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
-  } : undefined);
+  } : { cache: "no-cache" });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
@@ -74,7 +75,7 @@ function prilagodiUlicu() {
   dl.innerHTML = "";
   if (place === ADRESE.town) {
     for (const s of ADRESE.streets) dl.append(new Option(s));
-    ulica.placeholder = "Počnite tipkati, npr. Gajeva";
+    ulica.placeholder = "Počnite tipkati, npr. Ljudevita Gaja";
     $("ulica-pomoc").textContent = "";
     if (ADRESE.villages.includes(ulica.value)) ulica.value = "";
   } else {
@@ -192,7 +193,7 @@ function renderStanje(moje) {
     dalje.hidden = false;
     for (const n of ostalo) {
       const d = document.createElement("div");
-      d.textContent = `Također ${kada(n.date, { velikoSlovo: false })} ${vrijeme(n)}`;
+      d.textContent = `Također ${kada(n.date, { velikoSlovo: false })} ${vrijeme(n)}${n.kind === "struja-kvar" ? " (kvar)" : ""}`;
       dalje.append(d);
     }
   }

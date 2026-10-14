@@ -92,7 +92,7 @@
   }
   input:focus, select:focus { border-color: var(--gradna); outline: none; box-shadow: 0 0 0 3px rgba(46,106,134,.2); }
   input[aria-invalid="true"] { border-color: var(--kvar); }
-  .red { display: grid; grid-template-columns: 1fr 7.5rem; gap: 12px; }
+  label.kbr input { max-width: 9rem; }
   .greska { color: var(--kvar); font-size: 0.95rem; margin: 0; }
 
   button {
@@ -167,12 +167,9 @@
           <span class="pomoc" id="ulica-pomoc"></span>
         </label>
         <datalist id="ulice"></datalist>
-        <div class="red">
-          <span></span>
-          <label class="polje">Kućni broj
-            <input id="kbr" inputmode="text" autocomplete="off" maxlength="12" placeholder="npr. 12A">
-          </label>
-        </div>
+        <label class="polje kbr">Kućni broj <span class="pomoc">nije obavezno, ali s njim su obavijesti točnije</span>
+          <input id="kbr" inputmode="text" autocomplete="off" maxlength="12" placeholder="npr. 12A">
+        </label>
         <p class="greska" id="adresa-greska" role="alert" hidden></p>
         <div class="gumbi"><button class="gumb" type="submit">Spremi adresu</button></div>
       </form>

@@ -108,12 +108,12 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
     const all = await upcomingNotices(env.DB, todayZagreb());
     const place = url.searchParams.get("place");
     const street = url.searchParams.get("street");
-    if (!place || !street) return json(all, 200, "public, max-age=300");
+    if (!place || !street) return json(all, 200, "public, max-age=60");
     const addr: Address = { place, street, houseNumber: url.searchParams.get("house") ?? undefined };
     const matched = all
       .map((n) => ({ ...n, match: matchNotice(n, addr) }))
       .filter((n) => n.match !== null);
-    return json(matched, 200, "public, max-age=300");
+    return json(matched, 200, "public, max-age=60");
   }
 
   // GET /api/addresses → popis naselja i ulica za odabir adrese
