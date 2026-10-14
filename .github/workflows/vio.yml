@@ -1,0 +1,42 @@
+name: VIO prekidi vode
+
+# vio.hr Cloudflareovim poslužiteljima vraća prazan odgovor, a GitHubovima pravu
+# stranicu. Zato tablicu svaki sat dohvaća ovaj workflow i šalje je hubu.
+# Hub provjerava GitHubov OIDC token (potpisan, vezan uz ovaj repozitorij i granu),
+# pa nikakvi tajni ključevi nisu potrebni.
+on:
+  schedule:
+    - cron: "20 5-19 * * *" # svaki sat 07:20–21:20 po ljetnom vremenu (UTC)
+  workflow_dispatch:
+
+permissions:
+  id-token: write # za OIDC token
+  contents: read
+
+concurrency:
+  group: vio
+  cancel-in-progress: false
+
+jobs:
+  vio:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Dohvati VIO tablicu
+        run: |
+          curl -sS -L --fail --retry 2 --max-time 30 -o vio.html \
+            -A "Mozilla/5.0 (compatible; samobor-hub/1.0; +https://opticora.hr)" \
+            "https://www.vio.hr/obavijesti/privremeni-prekid-u-opskrbi-vodom-zbog-radova/1833"
+          BYTES=$(wc -c < vio.html)
+          echo "Dohvaćeno $BYTES B"
+          if [ "$BYTES" -lt 5000 ]; then echo "::error::VIO je vratio premalo podataka ($BYTES B)"; exit 1; fi
+
+      - name: Pošalji hubu
+        run: |
+          TOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=samobor-hub" | jq -r .value)
+          curl -sS --fail-with-body --max-time 60 -X POST \
+            -H "Authorization: Bearer $TOKEN" -H "Content-Type: text/html; charset=utf-8" \
+            --data-binary @vio.html \
+            https://samobor-hub.marko-skiljan1.workers.dev/api/ingest/vio
+          echo

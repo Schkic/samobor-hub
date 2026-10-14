@@ -11,7 +11,8 @@ import {
   sendPush,
 } from "./core/push";
 import { fetchHepDay, HEP_SAMOBOR } from "./sources/hep";
-import { fetchVio } from "./sources/vio";
+import { parseVioHtml, vioToNotices } from "./sources/vio";
+import { verifyGithubOidc } from "./core/oidc";
 import { fetchOdvoz, resolveZone, zoneOverview } from "./sources/odvoz";
 import { buildTimeline, type MatchedNotice } from "./core/dashboard";
 import { TOWN, TOWN_STREETS, VILLAGES } from "./data/addresses";
@@ -43,13 +44,14 @@ async function runHep(env: Env): Promise<{ found: number; added: Notice[] }> {
 }
 
 /**
- * VIO prekide vode objavljuje i istog dana, pa se gleda svaki sat. Sinkronizira se
- * svaki datum koji je u tablici (i onaj sa samo završenim radovima), da se završeni
- * i otkazani radovi uklone iz baze.
+ * VIO vraća prazan odgovor Cloudflareovim poslužiteljima, pa tablicu svaki sat
+ * dohvaća GitHub Actions (.github/workflows/vio.yml) i šalje je na /api/ingest/vio.
+ * Sinkronizira se svaki datum koji je u tablici (i onaj sa samo završenim radovima),
+ * da se završeni i otkazani radovi uklone iz baze.
  */
-async function runVio(env: Env): Promise<{ found: number; added: Notice[] }> {
+async function ingestVio(env: Env, html: string): Promise<{ found: number; added: Notice[] }> {
   try {
-    const { notices, dates } = await fetchVio();
+    const { notices, dates } = await vioToNotices(parseVioHtml(html));
     const added: Notice[] = [];
     for (const d of dates) {
       added.push(...(await syncDay(env.DB, "vio", d, notices.filter((n) => n.date === d))));
@@ -69,26 +71,22 @@ function zagrebHour(now = new Date()): number {
   );
 }
 
-/** Cron izraz za HEP (vidi wrangler.toml); svi ostali okidaju samo VIO. */
-const HEP_CRON = "0 4,14 * * *";
-
-async function runAll(env: Env, cron: string) {
-  // Izvori i slanje su odvojeni: ako jedan izvor padne, i dalje šaljemo za ono što već imamo
-  const log: string[] = [];
-  const jobs: [string, () => Promise<{ found: number; added: Notice[] }>][] = [["VIO", () => runVio(env)]];
-  if (cron === HEP_CRON) jobs.unshift(["HEP", () => runHep(env)]);
-  for (const [name, job] of jobs) {
-    try {
-      const { found, added } = await job();
-      log.push(`${name}: ${found} obavijesti, ${added.length} novih`);
-    } catch (e) {
-      log.push(`${name} greška: ${e}`);
-    }
-  }
+async function pushAll(env: Env) {
   const today = todayZagreb();
-  const notices = await upcomingNotices(env.DB, today);
-  const push = await deliver(env.DB, notices, today, zagrebHour() < 12);
-  console.log(`${log.join("; ")}; push: ${push.sent} poslano, ${push.gone} odjavljeno, ${push.errors} grešaka`);
+  return deliver(env.DB, await upcomingNotices(env.DB, today), today, zagrebHour() < 12);
+}
+
+async function runAll(env: Env) {
+  // Izvor i slanje su odvojeni: ako HEP padne, i dalje šaljemo za ono što već imamo
+  let hep: string;
+  try {
+    const { found, added } = await runHep(env);
+    hep = `HEP: ${found} obavijesti, ${added.length} novih`;
+  } catch (e) {
+    hep = `HEP greška: ${e}`;
+  }
+  const push = await pushAll(env);
+  console.log(`${hep}; push: ${push.sent} poslano, ${push.gone} odjavljeno, ${push.errors} grešaka`);
 }
 
 // ---------------------------------------------------------------------------
@@ -240,7 +238,32 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
     return json({ result });
   }
 
-  // POST /api/admin/run?source=vio|hep|all → ručno pokretanje izvora (za provjere).
+  // POST /api/ingest/vio  (tijelo: sirovi HTML VIO stranice)
+  // Šalje ga samo GitHub Actions iz repozitorija Schkic/samobor-hub; dokaz je
+  // GitHubov potpisani OIDC token, pa nikakvi tajni ključevi nisu potrebni.
+  if (path === "/api/ingest/vio" && req.method === "POST") {
+    const auth = req.headers.get("authorization") ?? "";
+    try {
+      await verifyGithubOidc(auth.replace(/^Bearer\s+/i, ""), {
+        audience: "samobor-hub",
+        repository: "Schkic/samobor-hub",
+        ref: "refs/heads/main",
+      });
+    } catch (e) {
+      return json({ error: `neovlašteno: ${(e as Error).message}` }, 401);
+    }
+    const html = await req.text();
+    if (html.length > 2_000_000) return bad("prevelik sadržaj");
+    try {
+      const { found, added } = await ingestVio(env, html);
+      const push = await pushAll(env);
+      return json({ found, added: added.length, push });
+    } catch (e) {
+      return json({ error: (e as Error).message }, 422);
+    }
+  }
+
+  // POST /api/admin/run → ručno pokretanje HEP-a i slanja (za provjere).
   // Ključ je u D1 (settings.admin_token); bez njega ruta ne postoji.
   if (path === "/api/admin/run" && req.method === "POST") {
     const row = await env.DB.prepare("SELECT value FROM settings WHERE key = 'admin_token'").first<{ value: string }>();
@@ -248,41 +271,9 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
     if (!row || !row.value || given.length !== row.value.length || !timingSafeEqual(given, row.value)) {
       return json({ error: "not found" }, 404);
     }
-    // ?probe=1: dijagnostika dohvata VIO stranice s različitim zaglavljima
-    if (url.searchParams.get("probe")) {
-      const variants: Record<string, Record<string, string>> = {
-        bez: {},
-        hub: { "User-Agent": "samobor-hub (+https://opticora.hr)" },
-        chrome: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
-          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-          "Accept-Language": "hr-HR,hr;q=0.9,en;q=0.8",
-        },
-      };
-      const probe: Record<string, unknown> = {};
-      for (const [name, headers] of Object.entries(variants)) {
-        try {
-          const r = await fetch("https://www.vio.hr/obavijesti/privremeni-prekid-u-opskrbi-vodom-zbog-radova/1833", { headers, redirect: "follow" });
-          const h = await r.text();
-          probe[name] = {
-            status: r.status, url: r.url, bytes: h.length,
-            title: /<title[^>]*>([\s\S]*?)<\/title>/i.exec(h)?.[1]?.trim().slice(0, 80) ?? null,
-            tables: (h.match(/<table/gi) ?? []).length,
-            datum: h.includes("DATUM"),
-            head: h.slice(0, 200),
-          };
-        } catch (e) {
-          probe[name] = String(e);
-        }
-      }
-      return json(probe);
-    }
-    const source = url.searchParams.get("source") ?? "all";
     const out: Record<string, unknown> = {};
-    if (source === "vio" || source === "all") out.vio = await runVio(env).then((r) => ({ found: r.found, added: r.added.length })).catch((e) => String(e));
-    if (source === "hep" || source === "all") out.hep = await runHep(env).then((r) => ({ found: r.found, added: r.added.length })).catch((e) => String(e));
-    const today = todayZagreb();
-    out.push = await deliver(env.DB, await upcomingNotices(env.DB, today), today, zagrebHour() < 12);
+    out.hep = await runHep(env).then((r) => ({ found: r.found, added: r.added.length })).catch((e) => String(e));
+    out.push = await pushAll(env);
     return json(out);
   }
 
@@ -297,8 +288,8 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
 }
 
 export default {
-  async scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(runAll(env, event.cron));
+  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(runAll(env));
   },
 
   async fetch(req: Request, env: Env): Promise<Response> {

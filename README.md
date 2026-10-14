@@ -9,7 +9,7 @@ baza, API i poklapanje s adresom korisnika su zajednički.
 | Izvor | Status | Odakle |
 |---|---|---|
 | HEP – isključenja struje | ✅ gotovo | `hep.hr/ods/bez-struje/19?dp=zagreb&el=115&datum=DD.MM.YYYY` (TJ Samobor) |
-| VIO – prekidi vode | ✅ gotovo | tablica na vio.hr, filtrirana na Samobor i naselja; svaki sat |
+| VIO – prekidi vode | ✅ gotovo | tablica na vio.hr, filtrirana na Samobor i naselja; svaki sat preko GitHub Actions (vio.hr Cloudflareu vraća prazan odgovor), hub provjerava GitHubov OIDC token |
 | Odvoz otpada | ✅ samo čitanje | javni `data.json` aplikacije za odvoz (aplikacija se ne dira) |
 | Autobusi | poveznica | aplikacija autobusi-samobor.opticora.hr |
 | Događanja | kasnije | TZ Samobor, POU, knjižnica |
@@ -50,7 +50,7 @@ Kad nije siguran, radije javi nego propusti.
 
 ```bash
 npm install
-npm test                         # 42 testa
+npm test                         # 44 testa
 # D1 baza već postoji (database_id je u wrangler.toml)
 npm run db:init                  # schema.sql (već pokrenuta, idempotentno)
 npm run dev                      # lokalno; cron: curl "localhost:8787/__scheduled"
