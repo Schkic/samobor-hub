@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="hr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Privatnost · MojSamobor</title>
+<meta name="description" content="Koje podatke MojSamobor sprema, zašto, koliko dugo i kako ih obrisati.">
+<link rel="icon" href="/favicon.png" type="image/png">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+  :root { --papir:#F5F6F1; --tinta:#1E2A23; --tinta-2:#4A5A50; --crta:#D9DDD3; --gradna:#2E6A86; --kartica:#FFFFFF; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --papir:#141A16; --tinta:#E9EEE8; --tinta-2:#A9B6AC; --crta:#2C3630; --gradna:#7DB8D4; --kartica:#1B231E; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--papir); color: var(--tinta); font: 400 1.0625rem/1.6 "Atkinson Hyperlegible", system-ui, sans-serif; }
+  main { max-width: 640px; margin: 0 auto; padding: 24px 16px 48px; }
+  a { color: var(--gradna); text-underline-offset: 2px; }
+  .natrag { display: inline-block; margin-bottom: 18px; font-size: 0.95rem; }
+  h1 { font: 800 1.9rem/1.15 "Bricolage Grotesque", system-ui, sans-serif; margin: 0 0 8px; letter-spacing: -0.01em; }
+  h2 { font: 700 1.15rem/1.3 "Bricolage Grotesque", system-ui, sans-serif; margin: 28px 0 6px; }
+  .uvod { font-size: 1.1rem; color: var(--tinta-2); margin: 0 0 8px; }
+  .kratko { background: var(--kartica); border: 1px solid var(--crta); border-radius: 14px; padding: 14px 16px; margin: 18px 0 8px; }
+  .kratko ul { margin: 6px 0 0; padding-left: 1.2em; }
+  li { margin: 4px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.95rem; margin-top: 8px; }
+  th, td { text-align: left; vertical-align: top; padding: 8px 8px 8px 0; border-bottom: 1px solid var(--crta); }
+  th { font-weight: 700; }
+  .sitno { color: var(--tinta-2); font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<main>
+  <a class="natrag" href="/">← Natrag na MojSamobor</a>
+  <h1>Privatnost</h1>
+  <p class="uvod">MojSamobor radi bez korisničkog računa, kolačića, oglasa i praćenja. Ovdje piše točno što se sprema i zašto.</p>
+
+  <div class="kratko">
+    <b>Ukratko</b>
+    <ul>
+      <li>Za pregled tvoje adrese ne spremamo ništa: adresa ostaje na tvom uređaju.</li>
+      <li>Samo ako uključiš <b>obavijesti na mobitel</b>, spremamo adresu i teme koje si odabrao, da bismo ti mogli javiti isključenje struje, vode ili odvoz.</li>
+      <li>Klikom na <b>Isključi</b> pod obavijestima sve to brišemo.</li>
+    </ul>
+  </div>
+
+  <h2>Tko je odgovoran</h2>
+  <p>MojSamobor je besplatna, neslužbena aplikacija obrta <a href="https://opticora.hr">OptiCora</a> iz Samobora. Nije povezana s Gradom Samoborom, HEP-om, VIO-om, Komunalcem ni prijevoznicima. Za sva pitanja o podacima piši na <a href="mailto:info@opticora.hr">info@opticora.hr</a>.</p>
+
+  <h2>Što se sprema i gdje</h2>
+  <table>
+    <tr><th>Podatak</th><th>Gdje</th><th>Zašto</th><th>Koliko dugo</th></tr>
+    <tr><td>Adresa, odabrane teme, zona odvoza</td><td>Samo na tvom uređaju (memorija preglednika)</td><td>Da je ne moraš upisivati svaki put</td><td>Dok je ne promijeniš ili ne obrišeš podatke preglednika</td></tr>
+    <tr><td>Adresa, teme i zona, <b>samo uz uključene obavijesti</b></td><td>Naša baza (Cloudflare)</td><td>Da znamo koje ti obavijesti poslati</td><td>Dok ne isključiš obavijesti ili tvoj preglednik ne javi da pretplata više ne vrijedi</td></tr>
+    <tr><td>Tehnička adresa za obavijesti (endpoint i ključevi koje daje tvoj preglednik)</td><td>Naša baza (Cloudflare)</td><td>Da obavijest stigne baš na tvoj uređaj</td><td>Kao gore</td></tr>
+    <tr><td>Popis poslanih obavijesti (koja i kada)</td><td>Naša baza (Cloudflare)</td><td>Da istu obavijest ne dobiješ dvaput</td><td>60 dana, ili do isključenja obavijesti</td></tr>
+  </table>
+  <p class="sitno">Ime, e-mail, telefon ni lokaciju uređaja ne tražimo i ne spremamo. Kućni broj nije obavezan.</p>
+
+  <h2>Kad otvoriš pregled</h2>
+  <p>Da bi aplikacija izračunala što vrijedi za tvoju adresu, adresa se pošalje našem poslužitelju. Poslužitelj odgovori i adresu ne sprema. Ne vodimo zapise o pojedinačnim posjetima i ne koristimo analitiku.</p>
+
+  <h2>Tko još sudjeluje</h2>
+  <ul>
+    <li><b>Cloudflare</b> pokreće aplikaciju i bazu (baza je u Cloudflareovom podatkovnom centru u Londonu). Kao svaki poslužitelj, tehnički obrađuje promet do aplikacije.</li>
+    <li><b>Push servis tvog preglednika</b> (Google za Chrome i Android, Apple za Safari i iPhone, Mozilla za Firefox) dostavlja obavijesti. Sadržaj obavijesti je šifriran tako da ga može pročitati samo tvoj uređaj.</li>
+    <li>Fontovi i sve ostalo učitavaju se s našeg poslužitelja, ne s Googlea ili drugih servisa.</li>
+  </ul>
+  <p>Podatke o isključenjima, odvozu, autobusima i događanjima preuzimamo s javnih stranica (HEP, VIO, Komunalac, Samoborček, Autoturist, Grad Samobor, Radio Samobor). Tim izvorima ne šaljemo ništa o tebi.</p>
+
+  <h2>Pravna osnova i tvoja prava</h2>
+  <p>Podatke uz obavijesti obrađujemo jer si nam za to dao privolu uključivanjem obavijesti. Privolu povlačiš gumbom <b>Isključi</b>, nakon čega podatke brišemo. Ako obavijesti uključiš ili isključiš u postavkama mobitela umjesto u aplikaciji, pretplatu obrišemo kad je push servis prijavi kao nevažeću.</p>
+  <p>Možeš tražiti uvid u podatke, ispravak ili brisanje na <a href="mailto:info@opticora.hr">info@opticora.hr</a>. Ako misliš da podatke obrađujemo protivno propisima, možeš se obratiti <a href="https://azop.hr">Agenciji za zaštitu osobnih podataka (AZOP)</a>.</p>
+
+  <p class="sitno" style="margin-top:28px">Zadnja izmjena: 15. listopada 2026.</p>
+</main>
+</body>
+</html>

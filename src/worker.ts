@@ -102,6 +102,16 @@ async function runAll(env: Env) {
   }
   const push = await pushAll(env);
   console.log(`${hep}; push: ${push.sent} poslano, ${push.gone} odjavljeno, ${push.errors} grešaka`);
+  await cleanup(env);
+}
+
+/** Rokovi čuvanja iz /privatnost/: evidencija poslanih obavijesti 60 dana, zapisi pokretanja 90 dana. */
+async function cleanup(env: Env) {
+  const days = (n: number) => new Date(Date.now() - n * 86400_000).toISOString();
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM deliveries WHERE sent_at < ?").bind(days(60)),
+    env.DB.prepare("DELETE FROM source_runs WHERE ran_at < ?").bind(days(90)),
+  ]);
 }
 
 /** Navečer: podsjetnik da je sutra odvoz, samo za one koji su to uključili. */

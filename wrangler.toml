@@ -32,5 +32,10 @@ binding = "DB"
 database_name = "samobor-hub"
 database_id = "2a39c488-eb28-4612-a2da-32690750c8e3"
 
+# Zapisi rada: samo ono što kod sam ispiše (console.log, bez adresa korisnika).
+# Zapisi pojedinačnih zahtjeva su isključeni jer bi sadržavali adresu iz upita /api/dashboard.
 [observability]
 enabled = true
+
+[observability.logs]
+invocation_logs = false

@@ -11,9 +11,9 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="MojSamobor">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap" rel="stylesheet">
+<!-- Fontovi s vlastitog poslužitelja (ne s Googlea), da posjet ne šalje IP adresu trećima -->
+<link rel="preload" href="/fonts/atkinson-hyperlegible-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/fonts/fonts.css">
 <style>
   :root {
     --papir: #F5F6F1;
@@ -245,7 +245,7 @@
 
     <section class="dio" id="dio-obavijesti" hidden>
       <h2>Obavijesti na mobitel</h2>
-      <p class="napomena">Odaberite o čemu vam javljamo za ovu adresu.</p>
+      <p class="napomena">Odaberite o čemu vam javljamo za ovu adresu. Uz uključene obavijesti spremamo adresu i odabrane teme, a gumb Isključi ih briše. <a href="/privatnost/">Više o privatnosti</a></p>
       <fieldset class="teme-izbor" id="teme-izbor">
         <legend class="vizualno-skriveno">Teme obavijesti</legend>
         <label><input type="checkbox" name="tema" value="struja"> <span><b>Struja</b> čim HEP najavi isključenje, i ujutro na taj dan</span></label>
@@ -284,7 +284,7 @@
   <footer class="dno">
     <p>Podaci: <a href="https://www.hep.hr/ods/bez-struje/19?dp=zagreb&amp;el=115">HEP ODS</a>, <a href="https://www.vio.hr/obavijesti/privremeni-prekid-u-opskrbi-vodom-zbog-radova/1833">Vodoopskrba i odvodnja</a>, raspored odvoza Komunalca Samobor, vozni red <a href="https://www.samoborcek.hr/grad-samobor/">Samoborčeka</a>, <a href="https://www.samobor.hr/kalendar-dogadjanja">kalendar Grada Samobora</a> i najave <a href="https://www.radiosamobor.hr/">Radio Samobora</a>.</p>
     <p id="provjereno"></p>
-    <p>MojSamobor je besplatna, neslužbena aplikacija obrta <a href="https://opticora.hr">OptiCora</a> i nije povezana s Gradom Samoborom. Kvar struje prijavite HEP-u na 0800 300 401, kvar vode VIO-u na 072 500 400.</p>
+    <p>MojSamobor je besplatna, neslužbena aplikacija obrta <a href="https://opticora.hr">OptiCora</a> i nije povezana s Gradom Samoborom. Kvar struje prijavite HEP-u na 0800 300 401, kvar vode VIO-u na 072 500 400. <a href="/privatnost/">Privatnost</a></p>
   </footer>
 </div>
 <script src="/app.js" type="module"></script>
