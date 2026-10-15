@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   house      TEXT,
   topics     TEXT,                      -- "struja,voda,odvoz"; NULL = struja i voda
   zone       TEXT,                      -- ručno odabrana zona odvoza
+  addresses  TEXT,                      -- JSON [{label, address, zone}]: sve adrese uređaja; prva = place/street/house/zone
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );

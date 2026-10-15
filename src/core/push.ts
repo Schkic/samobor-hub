@@ -14,15 +14,28 @@ export type Topic = "struja" | "voda" | "odvoz";
 export const TOPICS: Topic[] = ["struja", "voda", "odvoz"];
 export const DEFAULT_TOPICS: Topic[] = ["struja", "voda"]; // odvoz već šalje aplikacija za odvoz
 
+/** Jedna od adresa na uređaju (Dom, Roditelji…). */
+export interface SubAddress {
+  label?: string;
+  address: Address;
+  zone?: string; // ručno odabrana zona odvoza (ulice s više zona)
+}
+export const MAX_ADDRESSES = 5;
+
 export interface Subscription {
   id: string;
   endpoint: string;
   p256dh: string;
   auth: string;
-  address: Address;
+  address: Address; // prva adresa (zbog starijih klijenata i stupaca u bazi)
   topics: Topic[];
-  zone?: string; // ručno odabrana zona odvoza (ulice s više zona)
+  zone?: string;
+  addresses?: SubAddress[]; // sve adrese uređaja; prva je ista kao address/zone
 }
+
+/** Sve adrese pretplate (stari zapisi imaju samo jednu). */
+export const addressesOf = (sub: Subscription): SubAddress[] =>
+  sub.addresses?.length ? sub.addresses : [{ address: sub.address, zone: sub.zone }];
 
 export type DeliveryKind = "najava" | "danas" | "vecer";
 
@@ -34,6 +47,7 @@ export interface PlannedPush {
   sub: Subscription;
   kind: DeliveryKind;
   match: Exclude<MatchLevel, null>;
+  addr: SubAddress; // adresa uređaja na koju se obavijest odnosi
 }
 
 // ---------------------------------------------------------------------------
@@ -58,20 +72,27 @@ export function planPushes(
     if (notice.date < today) continue;
     for (const sub of subs) {
       if (!sub.topics.includes(topicOf(notice))) continue;
-      const match = matchNotice(notice, sub.address);
-      if (!match) continue;
+      // Prva adresa uređaja koju obavijest pogađa (najbolji pogodak ima prednost).
       // "Možda i vi" za cijeli grad Samobor bila bi poruka tisućama ljudi zbog jedne ulice:
       // takve obavijesti prikazujemo u aplikaciji, ali ih ne šaljemo kao push.
-      if (match === "place" && sub.address.place === "Samobor" && notice.partial) continue;
+      const RANK = { address: 0, street: 1, place: 2 } as const;
+      let best: { addr: SubAddress; match: Exclude<MatchLevel, null> } | null = null;
+      for (const addr of addressesOf(sub)) {
+        const m = matchNotice(notice, addr.address);
+        if (!m || (m === "place" && addr.address.place === "Samobor" && notice.partial)) continue;
+        if (!best || RANK[m] < RANK[best.match]) best = { addr, match: m };
+      }
+      if (!best) continue;
+      const { addr, match } = best;
       const key = (k: DeliveryKind) => `${notice.id}|${sub.id}|${k}`;
 
       const announced = delivered.has(key("najava"));
       if (!announced) {
-        plan.push({ notice, sub, kind: "najava", match });
+        plan.push({ notice, sub, kind: "najava", match, addr });
         continue; // ista runda: samo jedna poruka po obavijesti
       }
       if (isMorningRun && notice.date === today && !delivered.has(key("danas"))) {
-        plan.push({ notice, sub, kind: "danas", match });
+        plan.push({ notice, sub, kind: "danas", match, addr });
       }
     }
   }
@@ -108,11 +129,14 @@ export function pushPayload(p: PlannedPush, today: string) {
       : fault
         ? `Kvar: ${when.toLowerCase()} bez ${what}${time}`
         : `${when} bez ${what}${time}`;
-  const addr = `${p.sub.address.street}${p.sub.address.houseNumber ? " " + p.sub.address.houseNumber : ""}`;
+  const a = (p.addr ?? { address: p.sub.address }).address;
+  const addr = `${a.street}${a.houseNumber ? " " + a.houseNumber : ""}`;
   let body =
     p.match === "place"
-      ? `Radovi u naselju ${p.sub.address.place}. Moguće je da obuhvaćaju i tvoju adresu.`
+      ? `Radovi u naselju ${a.place}. Moguće je da obuhvaćaju i tvoju adresu.`
       : `Radovi ${who === "HEP" ? "HEP-a" : "VIO-a"} obuhvaćaju ${addr}.`;
+  // s više adresa na uređaju: za koju adresu vrijedi
+  if (addressesOf(p.sub).length > 1 && p.addr?.label) body = `${p.addr.label}: ${body}`;
   if (water && notice.note && /cistern/i.test(notice.note)) body += " Autocisterna će biti na terenu.";
   return {
     title,
@@ -184,6 +208,7 @@ interface SubRow {
   house: string | null;
   topics: string | null;
   zone: string | null;
+  addresses?: string | null; // JSON SubAddress[]
 }
 
 export function parseTopics(v: string | null | undefined): Topic[] {
@@ -199,7 +224,18 @@ const toSub = (r: SubRow): Subscription => ({
   address: { place: r.place, street: r.street, houseNumber: r.house ?? undefined },
   topics: parseTopics(r.topics),
   zone: r.zone ?? undefined,
+  addresses: parseAddresses(r.addresses),
 });
+
+function parseAddresses(v: string | null | undefined): SubAddress[] | undefined {
+  if (!v) return undefined;
+  try {
+    const a = JSON.parse(v);
+    return Array.isArray(a) && a.every((x) => x?.address?.place && x?.address?.street) ? a : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 export async function subscriptionId(endpoint: string): Promise<string> {
   return noticeId("sub", "", endpoint);
@@ -207,25 +243,26 @@ export async function subscriptionId(endpoint: string): Promise<string> {
 
 export async function saveSubscription(
   db: D1Database,
-  input: { endpoint: string; p256dh: string; auth: string; address: Address; topics?: Topic[]; zone?: string },
+  input: { endpoint: string; p256dh: string; auth: string; address: Address; topics?: Topic[]; zone?: string; addresses?: SubAddress[] },
 ): Promise<Subscription> {
   const id = await subscriptionId(input.endpoint);
   const now = new Date().toISOString();
-  const a = input.address;
+  const list = (input.addresses?.length ? input.addresses : [{ address: input.address, zone: input.zone }]).slice(0, MAX_ADDRESSES);
+  const a = list[0].address, zone = list[0].zone;
   const topics = input.topics ?? [...DEFAULT_TOPICS];
   await db
     .prepare(
-      `INSERT INTO subscriptions (id, endpoint, p256dh, auth, place, street, house, topics, zone, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO subscriptions (id, endpoint, p256dh, auth, place, street, house, topics, zone, addresses, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(endpoint) DO UPDATE SET
          p256dh = excluded.p256dh, auth = excluded.auth, place = excluded.place,
          street = excluded.street, house = excluded.house, topics = excluded.topics,
-         zone = excluded.zone, updated_at = excluded.updated_at`,
+         zone = excluded.zone, addresses = excluded.addresses, updated_at = excluded.updated_at`,
     )
     .bind(id, input.endpoint, input.p256dh, input.auth, a.place, a.street, a.houseNumber ?? null,
-      topics.join(","), input.zone ?? null, now, now)
+      topics.join(","), zone ?? null, JSON.stringify(list), now, now)
     .run();
-  return { id, endpoint: input.endpoint, p256dh: input.p256dh, auth: input.auth, address: a, topics, zone: input.zone };
+  return { id, endpoint: input.endpoint, p256dh: input.p256dh, auth: input.auth, address: a, topics, zone, addresses: list };
 }
 
 export async function deleteSubscription(db: D1Database, endpoint: string): Promise<void> {
@@ -329,6 +366,7 @@ export async function deliver(
 
 export interface PlannedOdvoz {
   sub: Subscription;
+  label?: string; // naziv adrese, kad ih na uređaju ima više
   zone: string;
   date: string;
   types: WasteType[];
@@ -345,13 +383,18 @@ export function planOdvozReminders(
   const plan: PlannedOdvoz[] = [];
   for (const sub of subs) {
     if (!sub.topics.includes("odvoz")) continue;
-    const { zone } = resolveZone(data, sub.address.place, sub.address.street, sub.address.houseNumber, sub.zone);
-    if (!zone) continue; // ulica s više zona bez odabrane zone: ne nagađamo
-    const day = zoneOverview(data, zone, tomorrow, tomorrow)?.days[0];
-    if (!day) continue;
-    const key = `odvoz:${zone}:${tomorrow}`;
-    if (delivered.has(`${key}|${sub.id}|vecer`)) continue;
-    plan.push({ sub, zone, date: tomorrow, types: day.types, key });
+    const addrs = addressesOf(sub);
+    const seen = new Set<string>();
+    for (const a of addrs) {
+      const { zone } = resolveZone(data, a.address.place, a.address.street, a.address.houseNumber, a.zone);
+      if (!zone || seen.has(zone)) continue; // ulica s više zona bez odabrane zone: ne nagađamo
+      seen.add(zone);
+      const day = zoneOverview(data, zone, tomorrow, tomorrow)?.days[0];
+      if (!day) continue;
+      const key = `odvoz:${zone}:${tomorrow}`;
+      if (delivered.has(`${key}|${sub.id}|vecer`)) continue;
+      plan.push({ sub, zone, date: tomorrow, types: day.types, key, ...(addrs.length > 1 && a.label ? { label: a.label } : {}) });
+    }
   }
   return plan;
 }
@@ -359,7 +402,7 @@ export function planOdvozReminders(
 export function odvozPayload(p: PlannedOdvoz) {
   const list = p.types.map((t) => WASTE_LABEL[t].toLowerCase()).join(", ");
   return {
-    title: `Sutra je odvoz: ${list}`,
+    title: `Sutra je odvoz${p.label ? ` (${p.label})` : ""}: ${list}`,
     body: "Iznesi spremnik večeras ili sutra do 6 sati ujutro.",
     tag: p.key,
     url: "/",

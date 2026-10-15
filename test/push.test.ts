@@ -207,3 +207,22 @@ test("push po temama: tko je isključio vodu ne dobiva obavijest o vodi", () => 
   const plan = planPushes([voda], [samoStruja, oboje], new Set(), TODAY, false);
   assert.deepEqual(plan.map((p) => p.sub.id), ["o"]);
 });
+
+test("više adresa: obavijest za bilo koju adresu uređaja, s nazivom adrese", () => {
+  const voda: Notice = {
+    id: "w2", source: "vio", kind: "voda", date: "2026-10-15", start: "09:00", end: "15:00",
+    places: ["RUDE"], streets: [], rawStreets: "RUDE", note: null, partial: false, url: "",
+  };
+  const s = sub("x", "Samobor", "Ulica grada Wirgesa", "12");
+  s.addresses = [
+    { label: "Dom", address: { place: "Samobor", street: "Ulica grada Wirgesa", houseNumber: "12" } },
+    { label: "Roditelji", address: { place: "Rude", street: "Rude", houseNumber: "92A" } },
+  ];
+  const plan = planPushes([voda], [s], new Set(), TODAY, false);
+  assert.equal(plan.length, 1); // jedna poruka po uređaju, ne po adresi
+  assert.equal(plan[0].addr.label, "Roditelji");
+  assert.match(pushPayload(plan[0], TODAY).body, /^Roditelji: /);
+  // jedna adresa: bez naziva u poruci
+  const one = planPushes([voda], [marko], new Set(), TODAY, false);
+  assert.doesNotMatch(pushPayload(one[0], TODAY).body, /:/);
+});

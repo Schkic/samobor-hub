@@ -188,7 +188,10 @@
   body { padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 12px); }
   .traka { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--papir) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--crta); padding-top: env(safe-area-inset-top, 0px); }
   .traka-red { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-top: 12px; padding-bottom: 10px; }
-  .adresa-link { display: flex; align-items: center; gap: 4px; margin-top: 3px; color: var(--tinta-2); font-size: 0.92rem; text-decoration: none; }
+  .traka-red > div:first-child { min-width: 0; }
+  .adresa-link { display: flex; align-items: center; gap: 4px; margin-top: 3px; color: var(--tinta-2); font-size: 0.92rem; text-decoration: none; white-space: nowrap; }
+  .adresa-link #adresa-tekst { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .adresa-link .promijeni { flex: none; }
   .adresa-link .promijeni { color: var(--gradna); margin-left: 2px; }
   .traka-gumbi { display: flex; gap: 4px; }
   .ik-gumb { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; color: var(--tinta); }
@@ -226,6 +229,16 @@
   .vikend { grid-column: 1 / -1; flex-direction: row; justify-content: space-between; align-items: center; min-height: 0; }
   .vikend b { display: block; font: 700 1.05rem/1.2 var(--display); }
 
+  .adrese-izbor { display: flex; gap: 8px; overflow-x: auto; margin: -4px 0 14px; scrollbar-width: none; }
+  .adrese-izbor button { flex: none; min-height: 38px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--crta); background: var(--kartica); color: var(--tinta); font-weight: 700; }
+  .adrese-izbor button[aria-selected="true"] { background: var(--tinta); border-color: var(--tinta); color: var(--papir); }
+  ul.adrese-popis { list-style: none; margin: 0 0 12px; padding: 0; }
+  ul.adrese-popis li { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--crta); }
+  ul.adrese-popis li b { display: block; }
+  ul.adrese-popis li .gdje { color: var(--tinta-2); font-size: 0.95rem; }
+  ul.adrese-popis .akcije { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  ul.adrese-popis .akcije button { min-height: 38px; padding: 0 12px; font-size: 0.92rem; }
+  ul.adrese-popis .aktivna-oznaka { color: var(--gradna); font-weight: 700; font-size: 0.9rem; }
   .cipovi { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 12px; scrollbar-width: none; }
   .cipovi a { flex: none; padding: 7px 12px; border: 1px solid var(--crta); border-radius: 99px; background: var(--kartica); color: var(--tinta); text-decoration: none; font-size: 0.92rem; }
   [data-sidro], .tema, section.dio { scroll-margin-top: 84px; }
@@ -261,6 +274,7 @@
     <div class="pozdrav" id="pozdrav-blok" hidden>
       <h1 id="pozdrav">Dobar dan!</h1>
       <p>Sve važno za tvoju adresu na jednom mjestu.</p>
+      <div class="adrese-izbor" id="adrese-izbor" role="tablist" aria-label="Adresa" hidden></div>
     </div>
     <div class="stanje prazno" id="stanje" aria-live="polite">
       <p class="dan" id="stanje-dan"></p>
@@ -319,16 +333,15 @@
   <div class="pogled" id="pogled-postavke" data-pogled="postavke" hidden>
     <h1 class="pogled-naslov">Postavke</h1>
     <section class="dio" id="dio-adresa-sazetak" data-sidro="adresa">
-      <h2>Adresa</h2>
-      <div class="adresa-red" id="adresa-sazetak">
-        <div class="gdje" id="adresa-sazetak-tekst"></div>
-        <button class="gumb-tihi" type="button" id="adresa-promijeni">Promijeni</button>
-      </div>
+      <h2>Adrese</h2>
+      <p class="napomena">Možeš spremiti do pet adresa, npr. dom, roditelje ili vikendicu. Obavijesti stižu za sve.</p>
+      <ul class="adrese-popis" id="adrese-popis"></ul>
+      <button class="gumb-tihi" type="button" id="adresa-dodaj">+ Dodaj adresu</button>
     </section>
     <div id="mjesto-obrasca-postavke"></div>
     <section class="dio" id="dio-obavijesti" data-sidro="obavijesti" hidden>
       <h2>Obavijesti na mobitel</h2>
-      <p class="napomena">Odaberi o čemu ti javljamo za ovu adresu. Uz uključene obavijesti spremamo adresu i odabrane teme, a gumb Isključi ih briše. <a href="/privatnost/">Više o privatnosti</a></p>
+      <p class="napomena">Odaberi o čemu ti javljamo. Obavijesti stižu za sve tvoje adrese. Uz uključene obavijesti spremamo adrese i odabrane teme, a gumb Isključi ih briše. <a href="/privatnost/">Više o privatnosti</a></p>
       <fieldset class="teme-izbor" id="teme-izbor">
         <legend class="vizualno-skriveno">Teme obavijesti</legend>
         <label><input type="checkbox" name="tema" value="struja"> <span><b>Struja</b> čim HEP najavi isključenje, i ujutro na taj dan</span></label>
@@ -366,6 +379,10 @@
 <div class="spremnik-obrasca" hidden><section class="dio" id="dio-adresa">
       <h2>Tvoja adresa</h2>
       <form class="adresa" id="adresa-obrazac" novalidate>
+        <label class="polje">Naziv <span class="pomoc">npr. Dom, Roditelji, Vikendica</span>
+          <input id="naziv" list="nazivi" maxlength="30" autocomplete="off" placeholder="Dom">
+        </label>
+        <datalist id="nazivi"><option value="Dom"><option value="Roditelji"><option value="Vikendica"><option value="Posao"><option value="Škola"></datalist>
         <label class="polje">Naselje
           <select id="naselje" required></select>
         </label>

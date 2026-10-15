@@ -53,7 +53,32 @@ async function api(path, body) {
   return data;
 }
 function ucitajAdresu() { try { return JSON.parse(localStorage.getItem(KEY) || "null"); } catch { return null; } }
-function spremiAdresu(a) { try { localStorage.setItem(KEY, JSON.stringify(a)); } catch { /* privatni način */ } }
+
+// Više adresa (Dom, Roditelji…): popis na uređaju i koja je trenutno prikazana.
+// Stara jedna adresa (KEY) prelazi u popis kao "Dom" i dalje se zapisuje, za svaki slučaj.
+const KEY_LISTA = "samobor.adrese", KEY_AKTIVNA = "samobor.aktivna", MAX_ADRESA = 5;
+function ucitajAdrese() {
+  try {
+    const l = JSON.parse(localStorage.getItem(KEY_LISTA) || "null");
+    if (Array.isArray(l) && l.length) return l;
+  } catch { /* nema popisa */ }
+  const stara = ucitajAdresu();
+  return stara ? [{ id: "a1", label: "Dom", ...stara }] : [];
+}
+let adrese = ucitajAdrese();
+function spremiPopis() {
+  try {
+    localStorage.setItem(KEY_LISTA, JSON.stringify(adrese));
+    if (adresa) { localStorage.setItem(KEY_AKTIVNA, adresa.id); localStorage.setItem(KEY, JSON.stringify(adresa)); }
+    else { localStorage.removeItem(KEY_AKTIVNA); localStorage.removeItem(KEY); }
+  } catch { /* privatni način */ }
+}
+/** Spremi promjenu prikazane adrese (npr. odabranu zonu) u popis. */
+function spremiAdresu(a) {
+  adrese = adrese.map((x) => (x.id === a.id ? a : x));
+  spremiPopis();
+}
+const nazivAdrese = (a) => a.label || opisAdrese(a);
 
 // ---------------------------------------------------------------- ikone
 
@@ -93,7 +118,12 @@ function ikonaStavke(s) {
 // ---------------------------------------------------------------- adrese
 
 let ADRESE = { town: "Samobor", streets: [], villages: [] };
-let adresa = ucitajAdresu();
+let adresa = (() => {
+  let id = null;
+  try { id = localStorage.getItem(KEY_AKTIVNA); } catch { /* */ }
+  return adrese.find((a) => a.id === id) ?? adrese[0] ?? null;
+})();
+let noviUnos = false; // obrazac dodaje novu adresu umjesto da mijenja prikazanu
 
 function popuniNaselja() {
   const sel = $("naselje");
@@ -131,15 +161,64 @@ function prikaziObrazac(prikazi) {
   if (f.parentElement !== cilj) cilj.append(f);
   f.hidden = !(prikazi || !adresa);
   $("adresa-odustani").hidden = !adresa;
-  $("adresa-sazetak").hidden = !adresa || prikazi;
   $("adresa-link").hidden = !adresa;
   document.querySelector("nav.dolje").hidden = !adresa;
-  if (adresa) {
-    $("adresa-tekst").textContent = opisAdrese(adresa);
-    $("adresa-sazetak-tekst").textContent = opisAdrese(adresa);
+  if (adresa) $("adresa-tekst").textContent = adrese.length > 1 ? `${nazivAdrese(adresa)} · ${opisAdrese(adresa)}` : opisAdrese(adresa);
+  renderAdrese();
+}
+
+function prebaciNa(id) {
+  adresa = adrese.find((a) => a.id === id) ?? adresa;
+  spremiPopis();
+  prikaziObrazac(false);
+  osvjezi();
+}
+
+/** Popis adresa u postavkama i brzi izbor na početnoj. */
+function renderAdrese() {
+  const ul = $("adrese-popis");
+  ul.innerHTML = "";
+  for (const a of adrese) {
+    const akcije = el("div", { className: "akcije" });
+    if (a.id === adresa?.id) akcije.append(el("span", { className: "aktivna-oznaka", textContent: "prikazana" }));
+    else {
+      const b = el("button", { className: "gumb-tihi", type: "button", textContent: "Prikaži" });
+      b.addEventListener("click", () => { prebaciNa(a.id); location.hash = "#/"; });
+      akcije.append(b);
+    }
+    const uredi = el("button", { className: "gumb-tihi", type: "button", textContent: "Promijeni" });
+    uredi.addEventListener("click", () => { adresa = a; spremiPopis(); noviUnos = false; popuniObrazac(); prikaziObrazac(true); $("naziv").focus(); });
+    akcije.append(uredi);
+    if (adrese.length > 1) {
+      const obrisi = el("button", { className: "gumb-tihi", type: "button", textContent: "Obriši" });
+      obrisi.addEventListener("click", async () => {
+        if (obrisi.dataset.potvrda !== "1") { obrisi.dataset.potvrda = "1"; obrisi.textContent = "Sigurno?"; return; }
+        adrese = adrese.filter((x) => x.id !== a.id);
+        if (adresa?.id === a.id) adresa = adrese[0];
+        spremiPopis();
+        prikaziObrazac(false);
+        await osvjezi();
+        await osvjeziPretplatu();
+      });
+      akcije.append(obrisi);
+    }
+    ul.append(el("li", {}, el("div", {}, el("b", { textContent: nazivAdrese(a) }), el("span", { className: "gdje", textContent: opisAdrese(a) })), akcije));
+  }
+  $("adresa-dodaj").hidden = adrese.length >= MAX_ADRESA;
+
+  const izbor = $("adrese-izbor");
+  izbor.innerHTML = "";
+  izbor.hidden = adrese.length < 2;
+  for (const a of adrese) {
+    const b = el("button", { type: "button", role: "tab", textContent: nazivAdrese(a) });
+    b.setAttribute("aria-selected", String(a.id === adresa?.id));
+    b.addEventListener("click", () => a.id !== adresa?.id && prebaciNa(a.id));
+    izbor.append(b);
   }
 }
 function popuniObrazac() {
+  $("naziv").value = noviUnos ? "" : adresa?.label ?? (adrese.length ? "" : "Dom");
+  if (noviUnos) { $("ulica").value = ""; $("kbr").value = ""; prilagodiUlicu(); return; }
   if (adresa) {
     $("naselje").value = adresa.place;
     $("ulica").value = adresa.street;
@@ -149,14 +228,14 @@ function popuniObrazac() {
 }
 
 $("naselje").addEventListener("change", prilagodiUlicu);
-$("adresa-promijeni").addEventListener("click", () => { prikaziObrazac(true); $("ulica").focus(); });
+$("adresa-dodaj").addEventListener("click", () => { noviUnos = true; popuniObrazac(); prikaziObrazac(true); $("naziv").focus(); });
 // ikone pločica
 for (const sp of document.querySelectorAll(".pl-ik")) {
   const k = sp.dataset.ik;
   if (k === "voda-struja") sp.append(ikona("voda", BOJA.voda), ikona("struja", BOJA.struja));
   else sp.append(ikona(k, k === "kanta" ? "var(--k-r)" : BOJA[k]));
 }
-$("adresa-odustani").addEventListener("click", () => { popuniObrazac(); prikaziObrazac(false); });
+$("adresa-odustani").addEventListener("click", () => { noviUnos = false; popuniObrazac(); prikaziObrazac(false); });
 
 $("adresa-obrazac").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -185,9 +264,18 @@ $("adresa-obrazac").addEventListener("submit", async (e) => {
     greska.hidden = false;
     return;
   }
-  const ista = adresa && adresa.place === place && adresa.street === street;
-  adresa = { place, street, houseNumber: houseNumber || undefined, ...(ista && adresa.zone ? { zone: adresa.zone } : {}) };
-  spremiAdresu(adresa);
+  const label = $("naziv").value.trim().slice(0, 30) || (adrese.length && (noviUnos || adresa?.label) ? "" : "Dom");
+  if (noviUnos || !adresa) {
+    const id = "a" + Date.now().toString(36);
+    adresa = { id, ...(label ? { label } : {}), place, street, houseNumber: houseNumber || undefined };
+    adrese = [...adrese, adresa].slice(0, MAX_ADRESA);
+  } else {
+    const ista = adresa.place === place && adresa.street === street;
+    adresa = { id: adresa.id ?? "a1", ...(label ? { label } : {}), place, street, houseNumber: houseNumber || undefined, ...(ista && adresa.zone ? { zone: adresa.zone } : {}) };
+    adrese = adrese.map((x) => (x.id === adresa.id ? adresa : x));
+  }
+  noviUnos = false;
+  spremiPopis();
   prikaziObrazac(false);
   if (location.hash.startsWith("#/postavke")) location.hash = "#/";
   await osvjezi();
@@ -692,12 +780,18 @@ async function pretplati(postojeca, tiho = false) {
       registracija ??= await navigator.serviceWorker.ready;
       sub = await registracija.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64UrlToBytes(publicKey) });
     }
-    const { zone, ...bezZone } = adresa;
+    const samo = (a) => ({ place: a.place, street: a.street, houseNumber: a.houseNumber });
     const teme = odabraneTeme();
-    await api("/api/subscribe", { subscription: sub.toJSON(), address: bezZone, topics: teme, zone: zone ?? null });
+    await api("/api/subscribe", {
+      subscription: sub.toJSON(),
+      address: samo(adresa), zone: adresa.zone ?? null, topics: teme,
+      // sve adrese uređaja: obavijesti stižu za svaku
+      addresses: adrese.map((a) => ({ label: a.label ?? null, address: samo(a), zone: a.zone ?? null })),
+    });
+    const za = adrese.length > 1 ? adrese.map(nazivAdrese).join(", ").replace(/, ([^,]*)$/, " i $1") : opisAdrese(adresa);
     poruka(!teme.length
       ? "Nijedna tema nije odabrana, pa ti zasad ništa nećemo slati."
-      : `${tiho ? "Spremljeno" : "Uključeno"}. Za ${opisAdrese(adresa)} javljamo: ${popisTema(teme)}.`);
+      : `${tiho ? "Spremljeno" : "Uključeno"}. Za ${za} javljamo: ${popisTema(teme)}.`);
   } catch (e) {
     poruka(`Obavijesti se nisu uključile: ${e.message}.`);
   }

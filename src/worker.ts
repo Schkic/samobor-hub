@@ -12,6 +12,8 @@ import {
   saveSubscription,
   sendPush,
   TOPICS,
+  MAX_ADDRESSES,
+  type SubAddress,
   type Topic,
 } from "./core/push";
 import { fetchHepDay, HEP_SAMOBOR } from "./sources/hep";
@@ -240,6 +242,13 @@ function parseTopicList(t: unknown): Topic[] | undefined | string {
   return out as Topic[];
 }
 
+/** Zona odvoza: undefined = nije zadana, false = neispravna. */
+function parseZone(v: unknown): string | undefined | false {
+  if (v == null || v === "") return undefined;
+  const z = String(v);
+  return z.length > 40 || !/^[\p{L}\d .-]+$/u.test(z) ? false : z;
+}
+
 function parseSubscription(s: any): { endpoint: string; p256dh: string; auth: string } | string {
   const endpoint = String(s?.endpoint ?? "");
   const p256dh = String(s?.keys?.p256dh ?? "");
@@ -348,9 +357,23 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
     if (typeof address === "string") return bad(address);
     const topics = parseTopicList(body?.topics);
     if (typeof topics === "string") return bad(topics);
-    const zone = body?.zone == null || body.zone === "" ? undefined : String(body.zone);
-    if (zone && (zone.length > 40 || !/^[\p{L}\d .-]+$/u.test(zone))) return bad("neispravna zona");
-    await saveSubscription(env.DB, { ...sub, address, topics, zone });
+    const zone = parseZone(body?.zone);
+    if (zone === false) return bad("neispravna zona");
+    // Više adresa (Dom, Roditelji…): [{label, address, zone}]; bez njih vrijedi jedna adresa iz "address"
+    let addresses: SubAddress[] | undefined;
+    if (body?.addresses != null) {
+      if (!Array.isArray(body.addresses) || !body.addresses.length || body.addresses.length > MAX_ADDRESSES) return bad("neispravan popis adresa");
+      addresses = [];
+      for (const x of body.addresses) {
+        const a = parseAddress(x?.address);
+        if (typeof a === "string") return bad(a);
+        const z = parseZone(x?.zone);
+        if (z === false) return bad("neispravna zona");
+        const label = x?.label == null ? undefined : String(x.label).trim().slice(0, 30) || undefined;
+        addresses.push({ address: a, ...(z ? { zone: z } : {}), ...(label ? { label } : {}) });
+      }
+    }
+    await saveSubscription(env.DB, { ...sub, address, topics, zone: zone || undefined, addresses });
     return json({ ok: true });
   }
 
@@ -370,7 +393,7 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
     const { privateJwk } = await getVapidKey(env.DB);
     const result = await sendPush(privateJwk, sub, {
       title: "Obavijesti rade ✓",
-      body: `Stizat će ti obavijesti za ${sub.address.street}${sub.address.houseNumber ? " " + sub.address.houseNumber : ""}: ${
+      body: `Stizat će ti obavijesti za ${(sub.addresses?.length ? sub.addresses : [{ address: sub.address }]).map((x: SubAddress) => x.label || `${x.address.street}${x.address.houseNumber ? " " + x.address.houseNumber : ""}`).join(", ")}: ${
         sub.topics.map((t) => ({ struja: "struja", voda: "voda", odvoz: "odvoz otpada" })[t]).join(", ") || "ništa nije odabrano"
       }.`,
       tag: "test",

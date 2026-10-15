@@ -155,3 +155,19 @@ test("podsjetnik večer prije odvoza: samo pretplate s temom odvoz, bez duplikat
   // dan bez odvoza
   assert.equal(planOdvozReminders(DATA, subs, new Set(), "2026-10-20").length, 0);
 });
+
+test("podsjetnik za odvoz: svaka zona uređaja jednom, s nazivom adrese", async () => {
+  const { planOdvozReminders, odvozPayload } = await import("../src/core/push");
+  const s = {
+    id: "v", endpoint: "e", p256dh: "k", auth: "a", topics: ["odvoz" as const],
+    address: { place: "Rude", street: "Rude" },
+    addresses: [
+      { label: "Dom", address: { place: "Rude", street: "Rude" } },
+      { label: "Roditelji", address: { place: "Samobor", street: "Ulica Josipa Jelačića" }, zone: "Samobor 4" },
+      { label: "Vikendica", address: { place: "Rude", street: "Rude", houseNumber: "5" } }, // ista zona kao Dom
+    ],
+  };
+  const plan = planOdvozReminders(DATA, [{ ...s, topics: ["odvoz"] }], new Set(), "2026-10-19");
+  assert.deepEqual(plan.map((p) => [p.zone, p.label]), [["Rude", "Dom"], ["Samobor 4", "Roditelji"]]);
+  assert.match(odvozPayload(plan[1]).title, /^Sutra je odvoz \(Roditelji\): miješani/i);
+});
