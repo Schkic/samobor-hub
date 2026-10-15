@@ -194,7 +194,7 @@ function renderStanje(d) {
   if (!d) {
     box.classList.add("prazno");
     $("stanje-naslov").textContent = "Što se događa na vašoj adresi?";
-    $("stanje-tekst").textContent = "Upišite adresu i na jednom mjestu vidjet ćete isključenja struje i vode te odvoz otpada.";
+    $("stanje-tekst").textContent = "Upišite adresu i na jednom mjestu vidjet ćete isključenja struje i vode, odvoz otpada, autobuse i događanja u gradu.";
     return;
   }
 
@@ -394,25 +394,32 @@ function renderDogadjanja(d) {
   if (!e.calendarOk) box.append(el("p", {}, "Gradski kalendar se trenutno ne može učitati. Pogledajte ga na ", kalendar.cloneNode(true), "."));
   else if (!e.upcoming.length) box.append(el("p", { textContent: "U idućih tjedan dana u gradskom kalendaru nema najavljenih događanja." }));
 
-  const MAX = 12;
-  let dan = null, ul = null;
-  for (const o of e.upcoming.slice(0, MAX)) {
-    if (o.date !== dan) {
-      dan = o.date;
-      const [naslov, datum] = danOznaka(o.date);
-      box.append(el("h3", { className: "dog-dan" }, naslov, el("span", { textContent: ` ${datum}` })));
-      ul = el("ul", { className: "dog-popis" });
-      box.append(ul);
+  const PRVIH = 6;
+  const popis = el("div");
+  const prikazi = (lista) => {
+    popis.innerHTML = "";
+    let dan = null, ul = null;
+    for (const o of lista) {
+      if (o.date !== dan) {
+        dan = o.date;
+        const [naslov, datum] = danOznaka(o.date);
+        popis.append(el("h3", { className: "dog-dan" }, naslov, el("span", { textContent: ` ${datum}` })));
+        ul = el("ul", { className: "dog-popis" });
+        popis.append(ul);
+      }
+      const naziv = o.url ? el("a", { href: o.url, textContent: o.title, target: "_blank", rel: "noopener" }) : el("span", { textContent: o.title });
+      ul.append(el("li", { className: o.cancelled ? "otkazano" : "" },
+        el("b", { className: "dog-sat", textContent: o.time ?? "" }),
+        el("div", {}, naziv, o.cancelled ? el("span", { className: "dog-otkazano", textContent: " otkazano" }) : "",
+          el("span", { className: "sitno dog-gdje", textContent: [o.category, o.location].filter(Boolean).join(" · ") }))));
     }
-    const naziv = o.url ? el("a", { href: o.url, textContent: o.title, target: "_blank", rel: "noopener" }) : el("span", { textContent: o.title });
-    const li = el("li", { className: o.cancelled ? "otkazano" : "" },
-      el("b", { className: "dog-sat", textContent: o.time ?? "" }),
-      el("div", {}, naziv, o.cancelled ? el("span", { className: "dog-otkazano", textContent: " otkazano" }) : "",
-        el("span", { className: "sitno dog-gdje", textContent: [o.category, o.location].filter(Boolean).join(" · ") })));
-    ul.append(li);
-  }
-  if (e.upcoming.length > MAX) {
-    box.append(el("p", { className: "sitno" }, `I još ${e.upcoming.length - MAX} u idućih tjedan dana, u `, kalendar.cloneNode(true), "."));
+  };
+  prikazi(e.upcoming.slice(0, PRVIH));
+  box.append(popis);
+  if (e.upcoming.length > PRVIH) {
+    const gumb = el("button", { className: "gumb-tihi dog-vise", type: "button", textContent: `Prikaži sve u idućih 7 dana (${e.upcoming.length})` });
+    gumb.addEventListener("click", () => { prikazi(e.upcoming); gumb.remove(); });
+    box.append(gumb);
   }
 
   if (e.ongoing.length) {

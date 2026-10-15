@@ -148,6 +148,7 @@
   .dog-popis a { color: var(--tinta); text-decoration-color: var(--crta); }
   .dog-gdje { display: block; }
   .otkazano a, .otkazano > div > span:first-child { text-decoration: line-through; color: var(--tinta-2); }
+  .dog-vise { margin-top: 10px; }
   .dog-otkazano { color: var(--kvar); font-weight: 700; font-size: 0.88rem; }
   .vrste { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
   .vrste li { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; }
@@ -199,7 +200,7 @@
     <div class="stanje prazno" id="stanje" aria-live="polite">
       <p class="dan" id="stanje-dan"></p>
       <h1 id="stanje-naslov">Što se događa na vašoj adresi?</h1>
-      <p class="uz" id="stanje-tekst">Upišite adresu i na jednom mjestu vidjet ćete isključenja struje i vode te odvoz otpada.</p>
+      <p class="uz" id="stanje-tekst">Upišite adresu i na jednom mjestu vidjet ćete isključenja struje i vode, odvoz otpada, autobuse i događanja u gradu.</p>
     </div>
 
     <div class="adresa-red" id="adresa-sazetak" hidden>
@@ -242,11 +243,6 @@
       <div class="tema" id="tema-autobusi"></div>
     </section>
 
-    <section class="dio" id="dio-dogadjanja" hidden>
-      <h2>Događanja u gradu</h2>
-      <div id="dogadjanja"></div>
-    </section>
-
     <section class="dio" id="dio-obavijesti" hidden>
       <h2>Obavijesti na mobitel</h2>
       <p class="napomena">Odaberite o čemu vam javljamo za ovu adresu.</p>
@@ -273,6 +269,11 @@
       <p class="poruka" id="obavijesti-poruka" role="status"></p>
     </section>
 
+    <section class="dio" id="dio-dogadjanja" hidden>
+      <h2>Događanja u gradu</h2>
+      <div id="dogadjanja"></div>
+    </section>
+
     <section class="dio" id="dio-svi">
       <h2>Sve najave na području Samobora</h2>
       <p class="napomena" id="svi-napomena">Isključenja struje (HEP) i vode (VIO) za cijelo područje, ne samo vašu adresu.</p>
@@ -281,7 +282,7 @@
   </main>
 
   <footer class="dno">
-    <p>Podaci: <a href="https://www.hep.hr/ods/bez-struje/19?dp=zagreb&amp;el=115">HEP ODS</a>, <a href="https://www.vio.hr/obavijesti/privremeni-prekid-u-opskrbi-vodom-zbog-radova/1833">Vodoopskrba i odvodnja</a> i raspored odvoza Komunalca Samobor.</p>
+    <p>Podaci: <a href="https://www.hep.hr/ods/bez-struje/19?dp=zagreb&amp;el=115">HEP ODS</a>, <a href="https://www.vio.hr/obavijesti/privremeni-prekid-u-opskrbi-vodom-zbog-radova/1833">Vodoopskrba i odvodnja</a>, raspored odvoza Komunalca Samobor, vozni red <a href="https://www.samoborcek.hr/grad-samobor/">Samoborčeka</a>, <a href="https://www.samobor.hr/kalendar-dogadjanja">kalendar Grada Samobora</a> i najave <a href="https://www.radiosamobor.hr/">Radio Samobora</a>.</p>
     <p id="provjereno"></p>
     <p>MojSamobor je besplatna, neslužbena aplikacija obrta <a href="https://opticora.hr">OptiCora</a> i nije povezana s Gradom Samoborom. Kvar struje prijavite HEP-u na 0800 300 401, kvar vode VIO-u na 072 500 400.</p>
   </footer>
