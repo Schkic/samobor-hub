@@ -314,7 +314,7 @@ function renderStanje(d) {
     const sto = iskljucenje.kind === "voda" ? "vode" : "struje";
     $("stanje-naslov").textContent = `${kada(iskljucenje.date)} ${vrijeme(iskljucenje)} nema ${sto}.`;
     const ostalo = blizu.filter((s) => s !== iskljucenje).map((s) => `${kada(s.date)}: ${s.title.charAt(0).toLowerCase()}${s.title.slice(1)}`);
-    $("stanje-tekst").textContent = [iskljucenje.detail, ...ostalo].filter(Boolean).join(". ") || `Najava se odnosi na ${opisAdrese(adresa)}.`;
+    $("stanje-tekst").textContent = [iskljucenje.detail, ...ostalo].filter(Boolean).join(". ") || `Najava se odnosi na tvoju adresu (${opisAdrese(adresa)}).`;
     return;
   }
 
@@ -331,16 +331,16 @@ function renderStanje(d) {
   if (odvoz) {
     $("stanje-naslov").textContent = `${kada(odvoz.date)} je odvoz: ${odvoz.title.replace(/^Odvoz: /, "")}.`;
     $("stanje-tekst").textContent = razlika(odvoz.date) === 1
-      ? "Iznesi spremnik večeras ili sutra do 6 sati. Struja i voda: nema najavljenih isključenja."
-      : "Struja i voda: nema najavljenih isključenja za danas i sutra.";
+      ? "Iznesi spremnik večeras ili sutra do 6 sati. Za tvoju adresu nema najavljenih prekida struje ni vode."
+      : "Za tvoju adresu nema najavljenih prekida struje ni vode danas i sutra.";
     return;
   }
 
   const sljedeci = d.timeline.find((s) => s.kind === "odvoz");
   $("stanje-naslov").textContent = "Danas i sutra sve po starom.";
   $("stanje-tekst").textContent = sljedeci
-    ? `Nema najavljenih isključenja struje ni vode. Sljedeći odvoz ${kada(sljedeci.date, false)}: ${sljedeci.title.replace(/^Odvoz: /, "")}.`
-    : "Nema najavljenih isključenja struje ni vode.";
+    ? `Trenutačno nema najavljenih prekida struje ni vode za tvoju adresu. Sljedeći odvoz ${kada(sljedeci.date, false)}: ${sljedeci.title.replace(/^Odvoz: /, "")}.`
+    : "Trenutačno nema najavljenih prekida struje ni vode za tvoju adresu.";
 }
 
 function renderCrta(d) {
@@ -378,7 +378,7 @@ function temaIskljucenja(id, naziv, vrsta, popis, izvor, zadnje) {
   box.innerHTML = "";
   box.append(el("div", { className: "tema-glava" }, ikona(vrsta, BOJA[vrsta]), el("h3", { textContent: naziv })));
   if (!popis.length) {
-    box.append(el("p", { textContent: `${izvor} ne najavljuje isključenja za tvoju adresu.` }));
+    box.append(el("p", { textContent: `Trenutačno nema najavljenih prekida za tvoju adresu (${izvor}).` }));
   } else {
     for (const n of popis) {
       const moguce = n.match === "place";
@@ -439,6 +439,9 @@ function temaOtpad(d) {
   }
 }
 
+const KEY_LINIJA = "samobor.linija";
+function omiljenaLinija() { try { return localStorage.getItem(KEY_LINIJA); } catch { return null; } }
+
 function temaAutobusi(d) {
   const box = $("tema-autobusi");
   box.innerHTML = "";
@@ -477,10 +480,21 @@ function temaAutobusi(d) {
     const biljeske = [...new Set(b.board.filter((r) => r.note).map((r) => `${r.line}: ${r.note}`))];
     for (const n of biljeske) box.append(el("p", { className: "sitno", textContent: `* ${n}` }));
   } else {
-    const prikaz = b.lines.slice(0, 4);
+    // omiljena linija ide prva i uvijek je prikazana
+    const fav = omiljenaLinija();
+    const redom = [...b.lines].sort((a, z) => (z.id === fav) - (a.id === fav));
+    const prikaz = redom.slice(0, 4);
     for (const l of prikaz) {
       const blok = el("div", { className: "bus-linija" });
-      blok.append(el("p", { className: "bus-naslov" }, el("span", { className: "bus-oznaka", textContent: l.id }), el("span", { textContent: l.name })));
+      const je = l.id === fav;
+      const zvijezda = el("button", { type: "button", className: "zvijezda" + (je ? " da" : ""), textContent: je ? "★" : "☆",
+        title: je ? "Makni s početne" : "Prikaži na početnoj", "aria-label": je ? `Makni liniju ${l.id} s početne` : `Linija ${l.id} na početnoj` });
+      zvijezda.setAttribute("aria-pressed", String(je));
+      zvijezda.addEventListener("click", () => {
+        try { je ? localStorage.removeItem(KEY_LINIJA) : localStorage.setItem(KEY_LINIJA, l.id); } catch { /* privatni način */ }
+        temaAutobusi(d); renderPlocice(d);
+      });
+      blok.append(el("p", { className: "bus-naslov" }, el("span", { className: "bus-oznaka", textContent: l.id }), el("span", { textContent: l.name }), zvijezda));
       if (l.note) blok.append(el("p", { className: "sitno", textContent: l.note }));
       const ul = el("ul", { className: "bus-smjerovi" });
       for (const dir of l.dirs) ul.append(el("li", {}, el("span", { textContent: `${dir.from} → ${dir.to}` }), vremena(dir)));
@@ -490,9 +504,9 @@ function temaAutobusi(d) {
       box.append(blok);
     }
     if (b.lines.length > prikaz.length) {
-      box.append(el("p", { className: "sitno", textContent: `I još ${b.lines.length - prikaz.length} ${b.lines.length - prikaz.length === 1 ? "linija" : "linije"}: ${b.lines.slice(4).map((l) => l.id).join(", ")}.` }));
+      box.append(el("p", { className: "sitno", textContent: `I još ${b.lines.length - prikaz.length} ${b.lines.length - prikaz.length === 1 ? "linija" : "linije"}: ${redom.slice(4).map((l) => l.id).join(", ")}.` }));
     }
-    box.append(el("p", { className: "sitno", textContent: "Vremena su polasci s početne stanice; do tvoje stanice autobus stiže nekoliko minuta kasnije." }));
+    box.append(el("p", { className: "sitno", textContent: "Vremena su polasci s početne stanice; do tvoje stanice autobus stiže nekoliko minuta kasnije. Zvjezdicom odabereš liniju koja se prikazuje na početnoj." }));
   }
   box.append(el("p", { className: "sitno" }, "Samoborček, gradske linije. Cijeli vozni red i Autoturist su u ", aplikacija, "."));
 }
@@ -567,8 +581,9 @@ function renderDogadjanja(d) {
 
 async function osvjezi() {
   renderStanje(null);
-  for (const id of ["dio-crta", "dio-teme", "dio-obavijesti", "dio-dogadjanja", "pozdrav-blok", "za-tebe-blok", "plocice"]) $(id).hidden = !adresa;
+  for (const id of ["dio-crta", "dio-teme", "dio-obavijesti", "dio-dogadjanja", "pozdrav-blok", "za-tebe-blok", "plocice", "svjezina"]) $(id).hidden = !adresa;
   renderPozdrav();
+  if (!adresa) $("poziv-obavijesti").hidden = true;
   if (adresa) {
     try {
       const q = new URLSearchParams({ place: adresa.place, street: adresa.street });
@@ -620,7 +635,7 @@ function renderZaTebe(d) {
       el("div", {}, el("b", { textContent: `${dan} · ${s.kind === "odvoz" ? "Odvoz: " + bezOdvoz(s.title).toLowerCase() : s.title}` }),
         opis ? el("span", { className: "opis", textContent: opis }) : null)));
   }
-  if (!stavke.length) ul.append(el("li", { className: "mirno" }, el("span"), el("div", { textContent: "Idućih 7 dana nema najavljenih isključenja ni odvoza." })));
+  if (!stavke.length) ul.append(el("li", { className: "mirno" }, el("span"), el("div", { textContent: "Idućih 7 dana nema najavljenih prekida struje i vode ni odvoza za tvoju adresu." })));
 }
 
 /** Petak–nedjelja ovog tjedna (ako je vikend, od danas do nedjelje). */
@@ -649,10 +664,12 @@ function renderPlocice(d) {
   const b = d.bus;
   let bus = "Linije i polasci";
   if (b?.mode === "stanica") {
-    const kandidati = b.lines.flatMap((l) => l.dirs.filter((x) => !x.tomorrow && x.next.length).map((x) => ({ l, x })));
+    const omiljena = b.lines.find((l) => l.id === omiljenaLinija());
+    const kandidati = (omiljena ? [omiljena] : b.lines).flatMap((l) => l.dirs.filter((x) => !x.tomorrow && x.next.length).map((x) => ({ l, x })));
     const prema = kandidati.filter(({ x }) => /samobor ak/i.test(x.to));
     const izbor = (prema.length ? prema : kandidati).sort((a, z) => a.x.next[0].time.padStart(5, "0").localeCompare(z.x.next[0].time.padStart(5, "0")))[0];
-    if (izbor) bus = `${izbor.l.id} → ${izbor.x.to.replace(/^Samobor AK$/, "Samobor")} u ${izbor.x.next[0].time}`;
+    if (izbor) bus = `${omiljena ? "★ " : ""}${izbor.l.id} → ${izbor.x.to.replace(/^Samobor AK$/, "Samobor")} u ${izbor.x.next[0].time}`;
+    else if (omiljena) bus = `★ ${omiljena.id}: danas više nema polazaka`;
   } else if (b?.mode === "kolodvor" && b.board[0]) {
     bus = `${b.board[0].line} s kolodvora u ${b.board[0].time}`;
   }
@@ -664,7 +681,7 @@ function renderPlocice(d) {
     const moguce = isk.match === "place";
     postaviPlocicu("pl-struja", `${danOznaka(isk.date)[0]}: ${moguce ? "moguće " : ""}bez ${isk.source === "vio" ? "vode" : "struje"}${isk.start ? " od " + isk.start : ""}`, !moguce && razlika(isk.date) <= 1);
   }
-  else postaviPlocicu("pl-struja", "Nema najava za tvoju adresu");
+  else postaviPlocicu("pl-struja", "Nema najavljenih prekida");
 
   // Događanja i vikend
   const e = d.events;
@@ -679,9 +696,37 @@ function renderPlocice(d) {
       : "Pogledaj sva događanja u gradu";
 }
 
+/** "Podaci provjereni: struja u 6:00, voda u 12:20…"; zastarjeli izvor je istaknut. */
+function satProvjere(iso) {
+  const t = new Date(iso);
+  const dan = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Zagreb" }).format(t);
+  const sat = t.toLocaleTimeString("hr-HR", { timeZone: "Europe/Zagreb", hour: "numeric", minute: "2-digit" });
+  const r = razlika(dan);
+  return r === 0 ? `u ${sat}` : r === -1 ? `jučer u ${sat}` : `${dm(dan)} u ${sat}`;
+}
+function renderSvjezina(d) {
+  const box = $("svjezina");
+  box.innerHTML = "";
+  // koliko sati izvor smije biti star prije nego što ga označimo (HEP 2×, VIO svaki sat, odvoz i događanja 1× dnevno)
+  const izvori = [
+    ["struja", d.sources.hep, 14], ["voda", d.sources.vio, 4],
+    ["odvoz", d.sources.odvoz, 30], ["događanja", d.events?.fetchedAt, 30],
+  ];
+  const dijelovi = [];
+  for (const [naziv, iso, maxSati] of izvori) {
+    if (!iso) { dijelovi.push(el("span", { className: "staro", textContent: `${naziv}: još nije provjereno` })); continue; }
+    const staro = Date.now() - new Date(iso).getTime() > maxSati * 3600000;
+    dijelovi.push(el("span", { className: staro ? "staro" : "", title: staro ? "Izvor se dulje nije uspio provjeriti" : "", textContent: `${naziv} ${satProvjere(iso)}` }));
+  }
+  box.append("Podaci provjereni: ");
+  dijelovi.forEach((x, i) => box.append(i ? " · " : "", x));
+}
+
 function renderPocetna(d) {
   renderZaTebe(d);
   renderPlocice(d);
+  renderSvjezina(d);
+  renderPoziv();
 }
 
 // ---------------------------------------------------------------- zasloni (#/, #/kalendar, #/istrazi/otpad, #/postavke/obavijesti)
@@ -766,6 +811,7 @@ function odabraneTeme() {
 const NAZIV_TEME = { struja: "struja", voda: "voda", odvoz: "odvoz otpada" };
 const popisTema = (t) => t.map((x) => NAZIV_TEME[x]).join(", ").replace(/, ([^,]*)$/, " i $1");
 
+/** Vraća true kad je pretplata spremljena na poslužitelju. */
 async function pretplati(postojeca, tiho = false) {
   try {
     let sub = postojeca;
@@ -774,7 +820,7 @@ async function pretplati(postojeca, tiho = false) {
       const dozvola = Notification.permission === "denied" ? "denied" : await Notification.requestPermission();
       if (dozvola !== "granted") {
         poruka("Obavijesti nisu dopuštene. Možeš ih dopustiti u postavkama preglednika za ovu stranicu.");
-        return;
+        return false;
       }
       const { publicKey } = await api("/api/vapid");
       registracija ??= await navigator.serviceWorker.ready;
@@ -788,15 +834,37 @@ async function pretplati(postojeca, tiho = false) {
       // sve adrese uređaja: obavijesti stižu za svaku
       addresses: adrese.map((a) => ({ label: a.label ?? null, address: samo(a), zone: a.zone ?? null })),
     });
-    const za = adrese.length > 1 ? adrese.map(nazivAdrese).join(", ").replace(/, ([^,]*)$/, " i $1") : opisAdrese(adresa);
+    const za = adrese.length > 1 ? adrese.map(nazivAdrese).join(", ").replace(/, ([^,]*)$/, " i $1") : `adresu ${opisAdrese(adresa)}`;
     poruka(!teme.length
       ? "Nijedna tema nije odabrana, pa ti zasad ništa nećemo slati."
       : `${tiho ? "Spremljeno" : "Uključeno"}. Za ${za} javljamo: ${popisTema(teme)}.`);
+    await renderObavijesti();
+    return true;
   } catch (e) {
     poruka(`Obavijesti se nisu uključile: ${e.message}.`);
+    await renderObavijesti();
+    return false;
   }
-  await renderObavijesti();
 }
+const KEY_POZIV = "samobor.poziv-obavijesti";
+/** Jednokratni poziv na početnoj; nakon uključivanja ili "Ne sada" obavijesti su samo u Postavkama. */
+async function renderPoziv() {
+  const box = $("poziv-obavijesti");
+  let skriven = false;
+  try { skriven = localStorage.getItem(KEY_POZIV) === "skriveno"; } catch { /* */ }
+  const sub = await trenutnaPretplata().catch(() => null);
+  const ukljucene = !!sub && podrzano && Notification.permission === "granted";
+  box.hidden = skriven || ukljucene || !adresa || (!podrzano && !iOS);
+  if (iOS && !instalirano) {
+    $("poziv-tekst").textContent = "Na iPhoneu obavijesti rade kad MojSamobor dodaš na početni zaslon.";
+    $("poziv-da").textContent = "Kako?";
+  }
+}
+function skrijPoziv() {
+  try { localStorage.setItem(KEY_POZIV, "skriveno"); } catch { /* */ }
+  $("poziv-obavijesti").hidden = true;
+}
+
 async function renderObavijesti() {
   const sub = await trenutnaPretplata();
   const da = !!sub && Notification.permission === "granted";
@@ -806,6 +874,28 @@ async function renderObavijesti() {
   $("iskljuci").hidden = !da;
 }
 function postaviObavijesti() {
+  $("poziv-ne").addEventListener("click", skrijPoziv);
+  $("poziv-da").addEventListener("click", async () => {
+    if (iOS && !instalirano) { location.hash = "#/postavke/obavijesti"; return; }
+    $("poziv-da").disabled = true;
+    const ok = await pretplati(null);
+    $("poziv-da").disabled = false;
+    if (ok) {
+      skrijPoziv();
+      $("poziv-potvrda").hidden = false;
+      $("poziv-potvrda-tekst").textContent = $("obavijesti-poruka").textContent;
+    } else {
+      $("poziv-tekst").textContent = $("obavijesti-poruka").textContent;
+    }
+  });
+  $("poziv-zatvori").addEventListener("click", () => { $("poziv-potvrda").hidden = true; });
+  $("poziv-proba").addEventListener("click", async () => {
+    $("proba").click();
+    // poruka o probi upisuje se u Postavke; ovdje je samo prenesemo
+    const prije = $("obavijesti-poruka").textContent;
+    for (let i = 0; i < 40 && $("obavijesti-poruka").textContent === prije; i++) await new Promise((r) => setTimeout(r, 100));
+    $("poziv-potvrda-tekst").textContent = $("obavijesti-poruka").textContent;
+  });
   if (iOS && !instalirano) { $("ios-uputa").hidden = false; $("ukljuci").hidden = true; return; }
   if (!podrzano) {
     $("ukljuci").hidden = true;

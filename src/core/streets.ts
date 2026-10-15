@@ -218,6 +218,24 @@ export type MatchLevel = "address" | "street" | "place" | null;
  *  - "place":   obavijest je za cijelo naselje (bez popisa ulica) ili je popis skraćen
  *  - null:      ne pogađa
  */
+// Zadnja riječ koja sama ne određuje ulicu ("… ODVOJAK", "SAVSKI GAJ III"): tu vrijedi samo točan naziv.
+const GENERIC_LAST = /^(ODVOJAK|PUT|CESTA|TRG|PRILAZ|NASELJE|BREG|BREGI|GAJ|[IVXL]+|\d+)$/;
+
+/**
+ * HEP često skraćuje nazive: "NAZORA" za Ulicu Vladimira Nazora, "I. PERKOVCA" za
+ * Ulicu Ivana Perkovca, "WIRGESA" za Ulicu grada Wirgesa. Skraćeni naziv odgovara
+ * punom kad mu je zadnja riječ ista, a svaka ranija riječ ili postoji u punom nazivu
+ * ili je početno slovo neke riječi iz njega.
+ */
+export function streetKeyMatches(segKey: string, addrKey: string): boolean {
+  if (segKey === addrKey) return true;
+  const seg = segKey.split(" "), full = addrKey.split(" ");
+  const last = seg[seg.length - 1];
+  if (seg.length > full.length || last !== full[full.length - 1] || GENERIC_LAST.test(last) || last.length < 4) return false;
+  const rest = full.slice(0, -1);
+  return seg.slice(0, -1).every((w) => rest.includes(w) || (w.length === 1 && rest.some((r) => r.startsWith(w))));
+}
+
 export function matchNotice(notice: Notice, addr: Address): MatchLevel {
   const place = normalizePlace(addr.place);
   const streetKey = normalizeStreet(addr.street);
@@ -233,7 +251,7 @@ export function matchNotice(notice: Notice, addr: Address): MatchLevel {
   const streets = notice.streets.filter((s) => !isPlaceOnly(s));
   const wholePlace = notice.streets.length > 0 && streets.length === 0;
 
-  const hit = streets.find((s) => s.key === streetKey);
+  const hit = streets.find((s) => s.key === streetKey) ?? streets.find((s) => streetKeyMatches(s.key, streetKey));
   if (hit) {
     // HEP navodi mjesto kao širi pojam (npr. ZAGREB za cijelu jedinicu), pa ulica
     // može biti pogođena i kad se naselje ne podudara doslovno. Ipak zahtijevamo

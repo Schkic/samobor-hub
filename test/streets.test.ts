@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  streetKeyMatches,
   houseMatches,
   matchNotice,
   normalizePlace,
@@ -197,4 +198,18 @@ test("matchNotice: cijelo naselje i skraćeni popis", () => {
   const cut = notice(["SAMOBOR"], "GAJEVA,LIVADIĆEVA,MLINSKA...");
   assert.equal(matchNotice(cut, { place: "Samobor", street: "Mlinska" }), "street");
   assert.equal(matchNotice(cut, { place: "Samobor", street: "Starogradska" }), "place");
+});
+
+test("skraćeni nazivi iz HEP-a: prezime, inicijal, bez 'grada'", () => {
+  assert.equal(streetKeyMatches("NAZORA", "VLADIMIRA NAZORA"), true);
+  assert.equal(streetKeyMatches("I PERKOVCA", "IVANA PERKOVCA"), true);
+  assert.equal(streetKeyMatches("WIRGESA", "GRADA WIRGESA"), true);
+  assert.equal(streetKeyMatches("V NAZORA", "VLADIMIRA NAZORA"), true);
+  // ne smije spojiti različite ulice
+  assert.equal(streetKeyMatches("NAZORA", "NAZOROVA ODVOJAK"), false);
+  assert.equal(streetKeyMatches("ODVOJAK", "NAZOROVA ODVOJAK"), false);
+  assert.equal(streetKeyMatches("GAJ", "SAVSKI GAJ"), false);
+  assert.equal(streetKeyMatches("SAVSKI GAJ", "SAVSKI GAJ III"), false);
+  assert.equal(streetKeyMatches("A PERKOVCA", "IVANA PERKOVCA"), false);
+  assert.equal(streetKeyMatches("IVANA PERKOVCA", "PERKOVCA"), false);
 });

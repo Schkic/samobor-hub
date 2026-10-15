@@ -250,6 +250,18 @@
   nav.dolje a[aria-current="page"] { color: var(--gradna); font-weight: 700; }
   nav.dolje a[aria-current="page"] svg { stroke-width: 2.2; }
 
+  .poziv { display: grid; grid-template-columns: 26px 1fr; gap: 12px; margin: 16px 0 0; padding: 16px; background: var(--kartica); border: 1px solid var(--gradna); border-radius: 16px; }
+  .poziv svg.ik { color: var(--gradna); }
+  .poziv.uspjeh { border-color: var(--crta); }
+  .poziv b { display: block; font: 700 1.05rem/1.25 var(--display); }
+  .poziv p { margin: 4px 0 10px; color: var(--tinta-2); font-size: 0.93rem; }
+  .poziv-gumbi { display: flex; gap: 8px; flex-wrap: wrap; }
+  .poziv-gumbi button { min-height: 40px; padding: 0 14px; }
+  .svjezina { margin: 10px 2px 4px; line-height: 1.5; }
+  .svjezina .staro { color: var(--kvar); font-weight: 700; }
+  .bus-naslov .zvijezda { margin-left: auto; min-width: 40px; min-height: 36px; padding: 0 8px; border: 0; background: transparent; color: var(--tinta-2); font-size: 1.3rem; line-height: 1; cursor: pointer; }
+  .bus-naslov .zvijezda.da { color: #d99a00; }
+
   [hidden] { display: none !important; }
   @media (prefers-reduced-motion: reduce) { .stanje, .stanje::before { transition: none; } }
 </style>
@@ -283,6 +295,23 @@
     </div>
     <div id="mjesto-obrasca"></div>
 
+    <aside class="poziv" id="poziv-obavijesti" aria-labelledby="poziv-naslov" hidden>
+      <svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
+      <div>
+        <b id="poziv-naslov">Javimo ti kad nestane struje ili vode?</b>
+        <p id="poziv-tekst">Obavijest stiže na mobitel čim HEP ili VIO najave prekid na tvojoj adresi. Kasnije ih mijenjaš u Postavkama.</p>
+        <div class="poziv-gumbi"><button type="button" class="gumb" id="poziv-da">Uključi obavijesti</button><button type="button" class="gumb-tihi" id="poziv-ne">Ne sada</button></div>
+      </div>
+    </aside>
+    <aside class="poziv uspjeh" id="poziv-potvrda" role="status" hidden>
+      <svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+      <div>
+        <b>Obavijesti su uključene</b>
+        <p id="poziv-potvrda-tekst"></p>
+        <div class="poziv-gumbi"><button type="button" class="gumb-tihi" id="poziv-proba">Pošalji probnu obavijest</button><button type="button" class="gumb-tihi" id="poziv-zatvori">U redu</button></div>
+      </div>
+    </aside>
+
     <section class="blok" id="za-tebe-blok" hidden>
       <h2 class="blok-naslov"><svg class="ik-naslov" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>Za tebe sljedećih dana</h2>
       <ul class="za-tebe" id="za-tebe"></ul>
@@ -295,6 +324,7 @@
       <a class="plocica" href="#/istrazi/dogadjanja" id="pl-dogadjanja"><span class="pl-ik" data-ik="dogadjaj"></span><b>Događanja</b><span class="pl-sub">Što se događa</span></a>
       <a class="vikend" href="#/istrazi/dogadjanja" id="pl-vikend"><span><b id="vikend-naslov">Ovaj vikend u Samoboru</b><span class="pl-sub" id="vikend-sub">Događanja, manifestacije i aktivnosti</span></span><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg></a>
     </nav>
+    <p class="sitno svjezina" id="svjezina" hidden></p>
   </div>
 
   <!-- KALENDAR -->
