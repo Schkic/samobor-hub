@@ -18,6 +18,7 @@ import { parseVioHtml, vioToNotices } from "./sources/vio";
 import { verifyGithubOidc } from "./core/oidc";
 import { fetchOdvoz, resolveZone, zoneOverview } from "./sources/odvoz";
 import { busOverview, fetchBus, nowMinutesZagreb } from "./sources/bus";
+import { eventsOverview, fetchEvents } from "./sources/events";
 import { buildTimeline, type MatchedNotice } from "./core/dashboard";
 import { TOWN, TOWN_STREETS, VILLAGES } from "./data/addresses";
 
@@ -239,7 +240,13 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
 
     // Autobusi: vozni red iz aplikacije Autobusi (samo čitanje). Greška ne ruši pregled.
     const busData = await fetchBus(env.DB).catch(() => null);
-    const bus = busData ? busOverview(busData.data, address, today, nowMinutesZagreb()) : null;
+    const nowMin = nowMinutesZagreb();
+    const bus = busData ? busOverview(busData.data, address, today, nowMin) : null;
+
+    // Događanja: gradski kalendar (isti za sve adrese)
+    const evData = await fetchEvents(env.DB).catch(() => null);
+    const hhmm = `${String(Math.floor(nowMin / 60)).padStart(2, "0")}:${String(nowMin % 60).padStart(2, "0")}`;
+    const events = evData ? { ...eventsOverview(evData.events, today, 7, hhmm), fetchedAt: evData.fetchedAt } : null;
 
     const runs = await env.DB.prepare(
       "SELECT source, MAX(ran_at) AS ran_at FROM source_runs WHERE ok = 1 GROUP BY source",
@@ -254,6 +261,7 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
       voda: matched.filter((n) => n.source === "vio"),
       odvoz,
       bus,
+      events,
       sources: { hep: lastRun.hep ?? null, vio: lastRun.vio ?? null, odvoz: odvozData?.fetchedAt ?? null },
     }, 200, "private, max-age=60");
   }

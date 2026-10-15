@@ -63,9 +63,10 @@ const PUTEVI = {
   voda: "M12 3c3.5 4.6 6 8 6 11a6 6 0 0 1-12 0c0-3 2.5-6.4 6-11z",
   kanta: "M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13",
   reciklaza: "M7 19H4l3-5M17 19h3l-3-5M12 4l-2 3.5M12 4l2 3.5M8 12l-2-3.5M16 12l2-3.5M9 19h6",
+  dogadjaj: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4",
   bus: "M6 17V6a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v11M6 17h12M6 17v3M18 17v3M6 12h12M9 15h.01M15 15h.01",
 };
-const BOJA = { struja: "#C99A00", voda: "var(--voda)", m: "var(--k-m)", b: "var(--k-b)", pa: "var(--k-pa)", pe: "var(--k-pe)", reciklaza: "var(--k-r)", bus: "var(--gradna)" };
+const BOJA = { struja: "#C99A00", voda: "var(--voda)", m: "var(--k-m)", b: "var(--k-b)", pa: "var(--k-pa)", pe: "var(--k-pe)", reciklaza: "var(--k-r)", bus: "var(--gradna)", dogadjaj: "var(--dogadjaj)" };
 
 function ikona(vrsta, boja) {
   const svg = document.createElementNS(SVG_NS, "svg");
@@ -381,9 +382,54 @@ function temaAutobusi(d) {
   box.append(el("p", { className: "sitno" }, "Samoborček, gradske linije. Cijeli vozni red i Autoturist su u ", aplikacija, "."));
 }
 
+function renderDogadjanja(d) {
+  const box = $("dogadjanja");
+  box.innerHTML = "";
+  const e = d.events;
+  const kalendar = el("a", { href: "https://www.samobor.hr/kalendar-dogadjanja", textContent: "gradskom kalendaru" });
+  if (!e) {
+    box.append(el("p", {}, "Događanja se trenutno ne mogu učitati. Pogledajte ih u ", kalendar, "."));
+    return;
+  }
+  if (!e.upcoming.length) box.append(el("p", { textContent: "U idućih tjedan dana u gradskom kalendaru nema najavljenih događanja." }));
+
+  const MAX = 12;
+  let dan = null, ul = null;
+  for (const o of e.upcoming.slice(0, MAX)) {
+    if (o.date !== dan) {
+      dan = o.date;
+      const [naslov, datum] = danOznaka(o.date);
+      box.append(el("h3", { className: "dog-dan" }, naslov, el("span", { textContent: ` ${datum}` })));
+      ul = el("ul", { className: "dog-popis" });
+      box.append(ul);
+    }
+    const naziv = o.url ? el("a", { href: o.url, textContent: o.title, target: "_blank", rel: "noopener" }) : el("span", { textContent: o.title });
+    const li = el("li", { className: o.cancelled ? "otkazano" : "" },
+      el("b", { className: "dog-sat", textContent: o.time ?? "" }),
+      el("div", {}, naziv, o.cancelled ? el("span", { className: "dog-otkazano", textContent: " otkazano" }) : "",
+        el("span", { className: "sitno dog-gdje", textContent: [o.category, o.location].filter(Boolean).join(" · ") })));
+    ul.append(li);
+  }
+  if (e.upcoming.length > MAX) {
+    box.append(el("p", { className: "sitno" }, `I još ${e.upcoming.length - MAX} u idućih tjedan dana, u `, kalendar.cloneNode(true), "."));
+  }
+
+  if (e.ongoing.length) {
+    box.append(el("h3", { className: "dog-dan", textContent: "Izložbe u tijeku" }));
+    const iz = el("ul", { className: "dog-popis" });
+    for (const x of e.ongoing) {
+      const naziv = x.url ? el("a", { href: x.url, textContent: x.title, target: "_blank", rel: "noopener" }) : el("span", { textContent: x.title });
+      iz.append(el("li", {}, el("b", { className: "dog-sat", textContent: `do ${dm(x.until)}` }),
+        el("div", {}, naziv, el("span", { className: "sitno dog-gdje", textContent: x.location ?? x.organizer ?? "" }))));
+    }
+    box.append(iz);
+  }
+  box.append(el("p", { className: "sitno" }, "Izvor: ", kalendar, " (kino, predstave, izložbe, predavanja, knjižnica, muzej)."));
+}
+
 async function osvjezi() {
   renderStanje(null);
-  $("dio-crta").hidden = $("dio-teme").hidden = $("dio-obavijesti").hidden = !adresa;
+  $("dio-crta").hidden = $("dio-teme").hidden = $("dio-obavijesti").hidden = $("dio-dogadjanja").hidden = !adresa;
   if (adresa) {
     try {
       const q = new URLSearchParams({ place: adresa.place, street: adresa.street });
@@ -396,6 +442,7 @@ async function osvjezi() {
       temaIskljucenja("tema-voda", "Voda", "voda", d.voda, "VIO", d.sources.vio);
       temaOtpad(d);
       temaAutobusi(d);
+      renderDogadjanja(d);
       renderSve(new Set([...d.struja, ...d.voda].map((n) => n.id)));
     } catch (e) {
       $("stanje-naslov").textContent = "Podaci se trenutno ne mogu učitati.";

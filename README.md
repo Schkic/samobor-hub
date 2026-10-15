@@ -12,7 +12,7 @@ baza, API i poklapanje s adresom korisnika su zajednički.
 | VIO – prekidi vode | ✅ gotovo | tablica na vio.hr, filtrirana na Samobor i naselja; svaki sat preko GitHub Actions (vio.hr Cloudflareu vraća prazan odgovor); Worker cron u :20 pokreće workflow (tajna `GITHUB_DISPATCH_TOKEN`, fine-grained, samo ovaj repo, Actions: read & write), a hub provjerava GitHubov OIDC token |
 | Odvoz otpada | ✅ samo čitanje | javni `data.json` aplikacije za odvoz (aplikacija se ne dira) |
 | Autobusi (Samoborček) | ✅ samo čitanje | javni `data.json` aplikacije Autobusi; linije čija stanica odgovara naselju/ulici, sljedeći polasci prema vrsti dana (radni / subota / nedjelja i blagdan, s Uskrsom i Tijelovom) |
-| Događanja | kasnije | TZ Samobor, POU, knjižnica |
+| Događanja | ✅ samo čitanje | gradski kalendar `samobor.hr/kalendar-dogadjanja` (kino, predstave, izložbe, predavanja, knjižnica, muzej); robots.txt dopušta stranicu bez upita (`/*?` je zabranjen), čita se najviše svakih 6 sati |
 
 ## Struktura
 
@@ -23,6 +23,7 @@ src/
   core/store.ts     D1: syncDay (nove/otkazane obavijesti), upit
   core/dates.ts     datumi u Europe/Zagreb
   sources/hep.ts    HEP scraper (čisti parser + fetch)
+  sources/events.ts gradski kalendar događanja: parser kartica, sljedećih 7 dana, izložbe u tijeku
   sources/bus.ts    vozni red Samoborčeka: stanice ↔ adresa, sljedeći polasci, blagdani
   worker.ts         cron + API
 test/               node:test, fixture-i su stvarni HEP odgovori
@@ -51,7 +52,7 @@ Kad nije siguran, radije javi nego propusti.
 
 ```bash
 npm install
-npm test                         # 53 testa
+npm test                         # 57 testova
 # D1 baza već postoji (database_id je u wrangler.toml)
 npm run db:init                  # schema.sql (već pokrenuta, idempotentno)
 npm run dev                      # lokalno; cron: curl "localhost:8787/__scheduled"
