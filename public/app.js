@@ -115,18 +115,28 @@ function prilagodiUlicu() {
     if (ADRESE.villages.includes(ulica.value)) ulica.value = "";
   } else {
     ulica.placeholder = place;
-    $("ulica-pomoc").textContent = "Ako vaše naselje nema ulice, ostavite naziv naselja.";
+    $("ulica-pomoc").textContent = "Ako tvoje naselje nema ulice, ostavi naziv naselja.";
     if (!ulica.value || ADRESE.villages.includes(ulica.value) || ADRESE.streets.includes(ulica.value)) ulica.value = place;
   }
 }
 const pronadiUlicu = (upis) => ADRESE.streets.find((s) => bezUlica(s) === bezUlica(upis)) || null;
 
+/**
+ * Obrazac adrese živi na jednom mjestu u DOM-u i seli se: bez adrese je na početnoj,
+ * pri promjeni u postavkama, inače skriven u spremniku.
+ */
 function prikaziObrazac(prikazi) {
-  $("dio-adresa").hidden = !prikazi;
-  $("adresa-sazetak").hidden = prikazi || !adresa;
+  const f = $("dio-adresa");
+  const cilj = !adresa ? $("mjesto-obrasca") : prikazi ? $("mjesto-obrasca-postavke") : document.querySelector(".spremnik-obrasca");
+  if (f.parentElement !== cilj) cilj.append(f);
+  f.hidden = !(prikazi || !adresa);
   $("adresa-odustani").hidden = !adresa;
+  $("adresa-sazetak").hidden = !adresa || prikazi;
+  $("adresa-link").hidden = !adresa;
+  document.querySelector("nav.dolje").hidden = !adresa;
   if (adresa) {
-    $("adresa-tekst").replaceChildren(opisAdrese(adresa));
+    $("adresa-tekst").textContent = opisAdrese(adresa);
+    $("adresa-sazetak-tekst").textContent = opisAdrese(adresa);
   }
 }
 function popuniObrazac() {
@@ -140,6 +150,12 @@ function popuniObrazac() {
 
 $("naselje").addEventListener("change", prilagodiUlicu);
 $("adresa-promijeni").addEventListener("click", () => { prikaziObrazac(true); $("ulica").focus(); });
+// ikone pločica
+for (const sp of document.querySelectorAll(".pl-ik")) {
+  const k = sp.dataset.ik;
+  if (k === "voda-struja") sp.append(ikona("voda", BOJA.voda), ikona("struja", BOJA.struja));
+  else sp.append(ikona(k, k === "kanta" ? "var(--k-r)" : BOJA[k]));
+}
 $("adresa-odustani").addEventListener("click", () => { popuniObrazac(); prikaziObrazac(false); });
 
 $("adresa-obrazac").addEventListener("submit", async (e) => {
@@ -155,8 +171,8 @@ $("adresa-obrazac").addEventListener("submit", async (e) => {
     const sluzbeno = pronadiUlicu(street);
     if (!sluzbeno) {
       greska.textContent = street
-        ? `Ulica „${street}" nije na popisu ulica Samobora. Odaberite je s popisa koji se pojavi dok tipkate.`
-        : "Upišite ulicu.";
+        ? `Ulica „${street}" nije na popisu ulica Samobora. Odaberi je s popisa koji se pojavi dok tipkaš.`
+        : "Upiši ulicu.";
       greska.hidden = false;
       $("ulica").setAttribute("aria-invalid", "true");
       $("ulica").focus();
@@ -173,6 +189,7 @@ $("adresa-obrazac").addEventListener("submit", async (e) => {
   adresa = { place, street, houseNumber: houseNumber || undefined, ...(ista && adresa.zone ? { zone: adresa.zone } : {}) };
   spremiAdresu(adresa);
   prikaziObrazac(false);
+  if (location.hash.startsWith("#/postavke")) location.hash = "#/";
   await osvjezi();
   await osvjeziPretplatu();
 });
@@ -193,8 +210,8 @@ function renderStanje(d) {
 
   if (!d) {
     box.classList.add("prazno");
-    $("stanje-naslov").textContent = "Što se događa na vašoj adresi?";
-    $("stanje-tekst").textContent = "Upišite adresu i na jednom mjestu vidjet ćete isključenja struje i vode, odvoz otpada, autobuse i događanja u gradu.";
+    $("stanje-naslov").textContent = "Što se događa na tvojoj adresi?";
+    $("stanje-tekst").textContent = "Upiši adresu i na jednom mjestu vidjet ćeš isključenja struje i vode, odvoz otpada, autobuse i događanja u gradu.";
     return;
   }
 
@@ -213,10 +230,20 @@ function renderStanje(d) {
     return;
   }
 
+  // moguće isključenje (radovi u naselju, popis ulica nije potpun): ne "mrak", ali ni "sve po starom"
+  const moguce = blizu.find((s) => s.kind === "struja" || s.kind === "voda");
+  if (moguce) {
+    const sto = moguce.kind === "voda" ? "vode" : "struje";
+    $("stanje-naslov").textContent = `${kada(moguce.date)} je moguće isključenje ${sto}, ${vrijeme(moguce)}.`;
+    $("stanje-tekst").textContent = [moguce.detail, odvoz ? `${kada(odvoz.date)} je odvoz: ${bezOdvoz(odvoz.title).toLowerCase()}` : null]
+      .filter(Boolean).map((t) => t.replace(/[.\s]+$/, "")).join(". ") + ".";
+    return;
+  }
+
   if (odvoz) {
     $("stanje-naslov").textContent = `${kada(odvoz.date)} je odvoz: ${odvoz.title.replace(/^Odvoz: /, "")}.`;
     $("stanje-tekst").textContent = razlika(odvoz.date) === 1
-      ? "Iznesite spremnik večeras ili sutra do 6 sati. Struja i voda: nema najavljenih isključenja."
+      ? "Iznesi spremnik večeras ili sutra do 6 sati. Struja i voda: nema najavljenih isključenja."
       : "Struja i voda: nema najavljenih isključenja za danas i sutra.";
     return;
   }
@@ -263,7 +290,7 @@ function temaIskljucenja(id, naziv, vrsta, popis, izvor, zadnje) {
   box.innerHTML = "";
   box.append(el("div", { className: "tema-glava" }, ikona(vrsta, BOJA[vrsta]), el("h3", { textContent: naziv })));
   if (!popis.length) {
-    box.append(el("p", { textContent: `${izvor} ne najavljuje isključenja za vašu adresu.` }));
+    box.append(el("p", { textContent: `${izvor} ne najavljuje isključenja za tvoju adresu.` }));
   } else {
     for (const n of popis) {
       const moguce = n.match === "place";
@@ -289,7 +316,7 @@ function temaOtpad(d) {
     return;
   }
   if (!o.zone && o.options.length) {
-    box.append(el("p", { textContent: `${adresa.street} je podijeljena u više zona odvoza. Odaberite dio ulice u kojem živite:` }));
+    box.append(el("p", { textContent: `${adresa.street} je podijeljena u više zona odvoza. Odaberi dio ulice u kojem živiš:` }));
     const zone = el("div", { className: "zone" });
     for (const z of o.options) {
       const b = el("button", { className: "gumb-tihi", type: "button" }, el("b", { textContent: z.zone }), z.note || "cijela ulica");
@@ -314,7 +341,7 @@ function temaOtpad(d) {
   const yard = o.overview.yard[0];
   if (yard) box.append(el("p", {}, `Mobilno reciklažno dvorište ${kada(yard.date, false)}, ${yard.time} h, ${yard.place}.`));
   box.append(el("p", { className: "sitno" },
-    `Zona ${o.zone}. Podsjetnik večer prije odvoza možete uključiti u obavijestima ispod. Cijeli raspored je u `,
+    `Zona ${o.zone}. Podsjetnik večer prije odvoza možeš uključiti u postavkama obavijesti. Cijeli raspored je u `,
     el("a", { href: "https://odvoz-otpada-samobor.opticora.hr/", textContent: "aplikaciji Odvoz otpada" }), "."));
   if (o.options.length > 1) {
     const b = el("button", { className: "gumb-tihi", type: "button", textContent: "Promijeni zonu" });
@@ -351,7 +378,7 @@ function temaAutobusi(d) {
   }
 
   if (b.mode === "kolodvor") {
-    box.append(el("p", { textContent: "Uz vašu ulicu nema stanice gradskih linija. Sljedeći polasci s autobusnog kolodvora (Samobor AK):" }));
+    box.append(el("p", { textContent: "Uz tvoju ulicu nema stanice gradskih linija. Sljedeći polasci s autobusnog kolodvora (Samobor AK):" }));
     const ul = el("ul", { className: "bus-ploca" });
     for (const r of b.board) {
       ul.append(el("li", {}, el("b", {}, r.time, r.note ? el("sup", { textContent: "*" }) : ""),
@@ -377,7 +404,7 @@ function temaAutobusi(d) {
     if (b.lines.length > prikaz.length) {
       box.append(el("p", { className: "sitno", textContent: `I još ${b.lines.length - prikaz.length} ${b.lines.length - prikaz.length === 1 ? "linija" : "linije"}: ${b.lines.slice(4).map((l) => l.id).join(", ")}.` }));
     }
-    box.append(el("p", { className: "sitno", textContent: "Vremena su polasci s početne stanice; do vaše stanice autobus stiže nekoliko minuta kasnije." }));
+    box.append(el("p", { className: "sitno", textContent: "Vremena su polasci s početne stanice; do tvoje stanice autobus stiže nekoliko minuta kasnije." }));
   }
   box.append(el("p", { className: "sitno" }, "Samoborček, gradske linije. Cijeli vozni red i Autoturist su u ", aplikacija, "."));
 }
@@ -388,10 +415,10 @@ function renderDogadjanja(d) {
   const e = d.events;
   const kalendar = el("a", { href: "https://www.samobor.hr/kalendar-dogadjanja", textContent: "gradskom kalendaru" });
   if (!e) {
-    box.append(el("p", {}, "Događanja se trenutno ne mogu učitati. Pogledajte ih u ", kalendar, "."));
+    box.append(el("p", {}, "Događanja se trenutno ne mogu učitati. Pogledaj ih u ", kalendar, "."));
     return;
   }
-  if (!e.calendarOk) box.append(el("p", {}, "Gradski kalendar se trenutno ne može učitati. Pogledajte ga na ", kalendar.cloneNode(true), "."));
+  if (!e.calendarOk) box.append(el("p", {}, "Gradski kalendar se trenutno ne može učitati. Pogledaj ga na ", kalendar.cloneNode(true), "."));
   else if (!e.upcoming.length) box.append(el("p", { textContent: "U idućih tjedan dana u gradskom kalendaru nema najavljenih događanja." }));
 
   // Najave (gradske novosti i Radio Samobor) idu na vrh: to su veća događanja, npr. Dan grada
@@ -452,7 +479,8 @@ function renderDogadjanja(d) {
 
 async function osvjezi() {
   renderStanje(null);
-  $("dio-crta").hidden = $("dio-teme").hidden = $("dio-obavijesti").hidden = $("dio-dogadjanja").hidden = !adresa;
+  for (const id of ["dio-crta", "dio-teme", "dio-obavijesti", "dio-dogadjanja", "pozdrav-blok", "za-tebe-blok", "plocice"]) $(id).hidden = !adresa;
+  renderPozdrav();
   if (adresa) {
     try {
       const q = new URLSearchParams({ place: adresa.place, street: adresa.street });
@@ -466,15 +494,130 @@ async function osvjezi() {
       temaOtpad(d);
       temaAutobusi(d);
       renderDogadjanja(d);
+      renderPocetna(d);
+      skociNaSidro();
       renderSve(new Set([...d.struja, ...d.voda].map((n) => n.id)));
     } catch (e) {
       $("stanje-naslov").textContent = "Podaci se trenutno ne mogu učitati.";
-      $("stanje-tekst").textContent = `${e.message}. Pokušajte ponovno za nekoliko minuta.`;
+      $("stanje-tekst").textContent = `${e.message}. Pokušaj ponovno za nekoliko minuta.`;
     }
   } else {
     renderSve(new Set());
   }
 }
+
+// ---------------------------------------------------------------- početna
+
+function satZagreb() {
+  return +new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Zagreb", hour: "2-digit", hour12: false }).format(new Date());
+}
+function renderPozdrav() {
+  const h = satZagreb();
+  $("pozdrav").textContent = h < 10 ? "Dobro jutro! 👋" : h < 18 ? "Dobar dan! 👋" : "Dobra večer! 👋";
+}
+const bezOdvoz = (t) => t.replace(/^Odvoz: /, "");
+const dodajDane = (iso, n) => new Date(utc(iso) + n * 86400000).toISOString().slice(0, 10);
+
+/** "Za tebe sljedećih dana": do 4 najbliže stavke s crte (isključenja, odvoz, reciklažno). */
+function renderZaTebe(d) {
+  const ul = $("za-tebe");
+  ul.innerHTML = "";
+  const do7 = dodajDane(todayZagreb(), 7);
+  const stavke = d.timeline.filter((s) => s.date < do7).slice(0, 4);
+  for (const s of stavke) {
+    const [dan] = danOznaka(s.date);
+    let opis = s.detail;
+    if (s.kind === "odvoz") opis = razlika(s.date) === 1 ? "Iznesi spremnik večeras ili sutra do 6 sati." : razlika(s.date) === 0 ? "Odvoz je danas." : opis;
+    ul.append(el("li", { className: s.urgent ? "hitno" : "" }, ikonaStavke(s),
+      el("div", {}, el("b", { textContent: `${dan} · ${s.kind === "odvoz" ? "Odvoz: " + bezOdvoz(s.title).toLowerCase() : s.title}` }),
+        opis ? el("span", { className: "opis", textContent: opis }) : null)));
+  }
+  if (!stavke.length) ul.append(el("li", { className: "mirno" }, el("span"), el("div", { textContent: "Idućih 7 dana nema najavljenih isključenja ni odvoza." })));
+}
+
+/** Petak–nedjelja ovog tjedna (ako je vikend, od danas do nedjelje). */
+function vikend() {
+  const t = todayZagreb(), wd = new Date(utc(t)).getUTCDay();
+  if (wd === 0) return [t, t];
+  if (wd >= 5) return [t, dodajDane(t, 7 - wd)];
+  return [dodajDane(t, 5 - wd), dodajDane(t, 7 - wd)];
+}
+
+function postaviPlocicu(id, tekst, vazno = false) {
+  const sub = $(id).querySelector(".pl-sub");
+  sub.textContent = tekst;
+  sub.classList.toggle("vazno", vazno);
+}
+
+function renderPlocice(d) {
+  // Odvoz
+  const o = d.odvoz;
+  const odv = d.timeline.find((s) => s.kind === "odvoz");
+  if (o && !o.zone && o.options?.length) postaviPlocicu("pl-otpad", "Odaberi svoju zonu", true);
+  else if (odv) postaviPlocicu("pl-otpad", `${danOznaka(odv.date).join(" ")} · ${bezOdvoz(odv.title).toLowerCase()}`);
+  else postaviPlocicu("pl-otpad", "Raspored i podsjetnici");
+
+  // Autobusi: najraniji današnji polazak (kod sela prednost ima smjer prema Samoboru)
+  const b = d.bus;
+  let bus = "Linije i polasci";
+  if (b?.mode === "stanica") {
+    const kandidati = b.lines.flatMap((l) => l.dirs.filter((x) => !x.tomorrow && x.next.length).map((x) => ({ l, x })));
+    const prema = kandidati.filter(({ x }) => /samobor ak/i.test(x.to));
+    const izbor = (prema.length ? prema : kandidati).sort((a, z) => a.x.next[0].time.padStart(5, "0").localeCompare(z.x.next[0].time.padStart(5, "0")))[0];
+    if (izbor) bus = `${izbor.l.id} → ${izbor.x.to.replace(/^Samobor AK$/, "Samobor")} u ${izbor.x.next[0].time}`;
+  } else if (b?.mode === "kolodvor" && b.board[0]) {
+    bus = `${b.board[0].line} s kolodvora u ${b.board[0].time}`;
+  }
+  postaviPlocicu("pl-autobusi", bus);
+
+  // Voda i struja
+  const isk = [...d.struja, ...d.voda].sort((a, z) => a.date.localeCompare(z.date))[0];
+  if (isk) {
+    const moguce = isk.match === "place";
+    postaviPlocicu("pl-struja", `${danOznaka(isk.date)[0]}: ${moguce ? "moguće " : ""}bez ${isk.source === "vio" ? "vode" : "struje"}${isk.start ? " od " + isk.start : ""}`, !moguce && razlika(isk.date) <= 1);
+  }
+  else postaviPlocicu("pl-struja", "Nema najava za tvoju adresu");
+
+  // Događanja i vikend
+  const e = d.events;
+  postaviPlocicu("pl-dogadjanja", e ? `${e.upcoming.length} u idućih 7 dana${e.ongoing.length ? ` · ${e.ongoing.length} izložbe` : ""}` : "Što se događa");
+  const [od, doV] = vikend();
+  const najava = e?.najave?.find((n) => n.from && n.from <= doV && (n.until ?? n.from) >= od);
+  const uVikendu = (e?.upcoming ?? []).filter((u) => u.date >= od && u.date <= doV && !u.cancelled);
+  $("vikend-sub").textContent = najava
+    ? `${najava.title}, ${najava.from === najava.until ? dm(najava.from) : `${dm(najava.from)}–${dm(najava.until)}`}${uVikendu.length ? ` · i još ${uVikendu.length} u kalendaru` : ""}`
+    : uVikendu.length
+      ? `${uVikendu.length} u gradskom kalendaru: ${[...new Set(uVikendu.map((u) => u.title))].slice(0, 2).join(", ")}…`
+      : "Pogledaj sva događanja u gradu";
+}
+
+function renderPocetna(d) {
+  renderZaTebe(d);
+  renderPlocice(d);
+}
+
+// ---------------------------------------------------------------- zasloni (#/, #/kalendar, #/istrazi/otpad, #/postavke/obavijesti)
+
+const SIDRA = { struja: "tema-struja", voda: "tema-voda", otpad: "tema-otpad", autobusi: "tema-autobusi", dogadjanja: "dio-dogadjanja", podrucje: "dio-svi", adresa: "dio-adresa-sazetak", obavijesti: "dio-obavijesti" };
+function usmjeri() {
+  const [p, sidro] = location.hash.replace(/^#\/?/, "").split("/");
+  const pogled = ["kalendar", "istrazi", "postavke"].includes(p) && (adresa || p === "postavke") ? p : "pocetna";
+  for (const v of document.querySelectorAll(".pogled")) v.hidden = v.dataset.pogled !== pogled;
+  for (const a of document.querySelectorAll("nav.dolje a")) {
+    if (a.dataset.za === pogled) a.setAttribute("aria-current", "page");
+    else a.removeAttribute("aria-current");
+  }
+  if (pogled === "postavke" && sidro === "adresa" && adresa) { prikaziObrazac(true); $("ulica").focus({ preventScroll: true }); }
+  if (sidro && $(SIDRA[sidro])) skociNaSidro();
+  else scrollTo(0, 0);
+}
+/** Skok na dio stranice; ponavlja se nakon učitavanja podataka, jer sadržaj iznad pomakne cilj. */
+function skociNaSidro() {
+  const sidro = location.hash.replace(/^#\/?/, "").split("/")[1];
+  const cilj = sidro && $(SIDRA[sidro]);
+  if (cilj && !cilj.closest(".pogled")?.hidden) requestAnimationFrame(() => cilj.scrollIntoView({ block: "start" }));
+}
+addEventListener("hashchange", usmjeri);
 
 async function renderSve(moji) {
   const ul = $("svi-popis");
@@ -542,7 +685,7 @@ async function pretplati(postojeca, tiho = false) {
       // Ako je dozvola ranije odbijena, preglednik više ne pita; to treba reći odmah
       const dozvola = Notification.permission === "denied" ? "denied" : await Notification.requestPermission();
       if (dozvola !== "granted") {
-        poruka("Obavijesti nisu dopuštene. Možete ih dopustiti u postavkama preglednika za ovu stranicu.");
+        poruka("Obavijesti nisu dopuštene. Možeš ih dopustiti u postavkama preglednika za ovu stranicu.");
         return;
       }
       const { publicKey } = await api("/api/vapid");
@@ -553,7 +696,7 @@ async function pretplati(postojeca, tiho = false) {
     const teme = odabraneTeme();
     await api("/api/subscribe", { subscription: sub.toJSON(), address: bezZone, topics: teme, zone: zone ?? null });
     poruka(!teme.length
-      ? "Nijedna tema nije odabrana, pa vam zasad ništa nećemo slati."
+      ? "Nijedna tema nije odabrana, pa ti zasad ništa nećemo slati."
       : `${tiho ? "Spremljeno" : "Uključeno"}. Za ${opisAdrese(adresa)} javljamo: ${popisTema(teme)}.`);
   } catch (e) {
     poruka(`Obavijesti se nisu uključile: ${e.message}.`);
@@ -572,7 +715,7 @@ function postaviObavijesti() {
   if (iOS && !instalirano) { $("ios-uputa").hidden = false; $("ukljuci").hidden = true; return; }
   if (!podrzano) {
     $("ukljuci").hidden = true;
-    poruka("Ovaj preglednik ne podržava obavijesti. Pokušajte u Chromeu, Firefoxu ili Safariju.");
+    poruka("Ovaj preglednik ne podržava obavijesti. Pokušaj u Chromeu, Firefoxu ili Safariju.");
     return;
   }
   const teme = ucitajTeme();
@@ -591,9 +734,9 @@ function postaviObavijesti() {
     $("proba").disabled = true;
     try {
       const r = await api("/api/test", { endpoint: sub.endpoint });
-      poruka(r.result === "sent" ? "Probna obavijest je poslana. Trebala bi stići za nekoliko sekundi." : "Probna obavijest nije poslana. Isključite pa ponovno uključite obavijesti.");
+      poruka(r.result === "sent" ? "Probna obavijest je poslana. Trebala bi stići za nekoliko sekundi." : "Probna obavijest nije poslana. Isključi pa ponovno uključi obavijesti.");
     } catch (e) {
-      poruka(e.message === "pretplata nije pronađena" ? "Ovaj uređaj nije prijavljen. Uključite obavijesti ponovno." : `Probna obavijest nije poslana: ${e.message}.`);
+      poruka(e.message === "pretplata nije pronađena" ? "Ovaj uređaj nije prijavljen. Uključi obavijesti ponovno." : `Probna obavijest nije poslana: ${e.message}.`);
     }
     $("proba").disabled = false;
   });
@@ -619,5 +762,7 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").cat
   popuniObrazac();
   prikaziObrazac(!adresa);
   postaviObavijesti();
+  if (new URLSearchParams(location.search).has("n") && !location.hash) location.replace("#/istrazi/podrucje");
+  usmjeri();
   await osvjezi();
 })();

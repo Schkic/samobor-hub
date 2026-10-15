@@ -370,7 +370,7 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
     const { privateJwk } = await getVapidKey(env.DB);
     const result = await sendPush(privateJwk, sub, {
       title: "Obavijesti rade ✓",
-      body: `Stizat će vam obavijesti za ${sub.address.street}${sub.address.houseNumber ? " " + sub.address.houseNumber : ""}: ${
+      body: `Stizat će ti obavijesti za ${sub.address.street}${sub.address.houseNumber ? " " + sub.address.houseNumber : ""}: ${
         sub.topics.map((t) => ({ struja: "struja", voda: "voda", odvoz: "odvoz otpada" })[t]).join(", ") || "ništa nije odabrano"
       }.`,
       tag: "test",

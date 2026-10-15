@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>MojSamobor</title>
-<meta name="description" content="Struja, voda i odvoz otpada za vašu adresu u Samoboru, na jednom mjestu, s obavijestima na mobitel.">
+<meta name="description" content="Struja, voda, odvoz otpada, autobusi i događanja za tvoju adresu u Samoboru, na jednom mjestu, s obavijestima na mobitel.">
 <meta name="theme-color" content="#1E2A23">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/favicon.png" type="image/png">
@@ -182,34 +182,189 @@
   footer.dno { padding: 22px 0 40px; border-top: 1px solid var(--crta); color: var(--tinta-2); font-size: 0.92rem; }
   footer.dno p { margin: 0 0 8px; }
 
+
+  /* ===== Novi raspored: traka, pogledi, pločice, donji izbornik ===== */
+  :root { --kartica: #FFFFFF; --nav-h: 64px; }
+  body { padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 12px); }
+  .traka { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--papir) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--crta); padding-top: env(safe-area-inset-top, 0px); }
+  .traka-red { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-top: 12px; padding-bottom: 10px; }
+  .adresa-link { display: flex; align-items: center; gap: 4px; margin-top: 3px; color: var(--tinta-2); font-size: 0.92rem; text-decoration: none; }
+  .adresa-link .promijeni { color: var(--gradna); margin-left: 2px; }
+  .traka-gumbi { display: flex; gap: 4px; }
+  .ik-gumb { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; color: var(--tinta); }
+  .ik-gumb:hover { background: rgba(0,0,0,.05); }
+  svg.ik, svg.ik-mala, svg.ik-naslov { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  svg.ik { width: 22px; height: 22px; }
+  svg.ik-mala { width: 15px; height: 15px; flex: none; }
+  svg.ik-naslov { width: 20px; height: 20px; flex: none; color: var(--tinta-2); }
+
+  .pogled { padding-top: 14px; }
+  .pogled-naslov { font: 800 1.8rem/1.1 var(--display); letter-spacing: -0.02em; margin: 6px 0 6px; }
+  .pozdrav h1 { font: 800 1.7rem/1.1 var(--display); letter-spacing: -0.02em; margin: 4px 0 2px; }
+  .pozdrav p { margin: 0 0 14px; color: var(--tinta-2); }
+  .pogled .stanje { padding: 22px 20px 20px; }
+  .pogled .stanje h1 { font-size: clamp(1.45rem, 6.2vw, 2rem); }
+
+  .blok { margin: 22px 0 6px; }
+  .blok-naslov { display: flex; align-items: center; gap: 8px; font: 700 1.15rem/1.2 var(--display); margin: 0 0 10px; }
+  ul.za-tebe { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  ul.za-tebe li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; padding: 12px 14px; background: var(--kartica); border: 1px solid var(--crta); border-radius: 14px; }
+  ul.za-tebe li.hitno { border-color: var(--kvar); box-shadow: inset 3px 0 0 var(--kvar); }
+  ul.za-tebe .ikone svg { width: 22px; height: 22px; }
+  ul.za-tebe b { display: block; font-weight: 700; }
+  ul.za-tebe span.opis { display: block; color: var(--tinta-2); font-size: 0.92rem; }
+  ul.za-tebe li.mirno { background: transparent; border-style: dashed; color: var(--tinta-2); }
+
+  .plocice { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 18px 0 8px; }
+  .plocica, .vikend { display: flex; flex-direction: column; gap: 2px; padding: 14px; min-height: 96px; background: var(--kartica); border: 1px solid var(--crta); border-radius: 14px; color: var(--tinta); text-decoration: none; transition: border-color .15s ease, transform .15s ease; }
+  .plocica:hover, .vikend:hover { border-color: var(--gradna); }
+  .plocica:active, .vikend:active { transform: scale(.98); }
+  .plocica b { margin-top: 6px; font: 700 1.02rem/1.2 var(--display); }
+  .pl-ik svg { width: 24px; height: 24px; }
+  .pl-sub { color: var(--tinta-2); font-size: 0.88rem; line-height: 1.35; }
+  .pl-sub.vazno { color: var(--kvar); font-weight: 700; }
+  .vikend { grid-column: 1 / -1; flex-direction: row; justify-content: space-between; align-items: center; min-height: 0; }
+  .vikend b { display: block; font: 700 1.05rem/1.2 var(--display); }
+
+  .cipovi { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 12px; scrollbar-width: none; }
+  .cipovi a { flex: none; padding: 7px 12px; border: 1px solid var(--crta); border-radius: 99px; background: var(--kartica); color: var(--tinta); text-decoration: none; font-size: 0.92rem; }
+  [data-sidro], .tema, section.dio { scroll-margin-top: 84px; }
+  .druge { color: var(--tinta-2); font-size: 0.92rem; }
+  .pogled footer.dno { border-top: 0; padding: 0; }
+
+  nav.dolje { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; display: flex; justify-content: center; background: var(--kartica); border-top: 1px solid var(--crta); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  nav.dolje a { flex: 1; max-width: 150px; height: var(--nav-h); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--tinta-2); text-decoration: none; font-size: 0.78rem; }
+  nav.dolje a[aria-current="page"] { color: var(--gradna); font-weight: 700; }
+  nav.dolje a[aria-current="page"] svg { stroke-width: 2.2; }
+
   [hidden] { display: none !important; }
   @media (prefers-reduced-motion: reduce) { .stanje, .stanje::before { transition: none; } }
 </style>
 </head>
 <body>
-<div class="omot">
-  <header class="vrh">
-    <a class="znak" href="/">MojSamobor</a>
-    <nav class="vanjske" aria-label="Druge aplikacije">
-      <a href="https://odvoz-otpada-samobor.opticora.hr/">Odvoz</a>
-      <a href="https://autobusi-samobor.opticora.hr/">Autobusi</a>
-    </nav>
-  </header>
+<header class="traka">
+  <div class="omot traka-red">
+    <div>
+      <a class="znak" href="#/">MojSamobor</a>
+      <a class="adresa-link" id="adresa-link" href="#/postavke/adresa" hidden><svg class="ik-mala" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6-5.3-6-11a6 6 0 0 1 12 0c0 5.7-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg><span id="adresa-tekst"></span><span class="promijeni">· Promijeni</span></a>
+    </div>
+    <div class="traka-gumbi">
+      <a class="ik-gumb" href="#/postavke/obavijesti" aria-label="Obavijesti"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></a>
+      <a class="ik-gumb" href="#/postavke" aria-label="Postavke"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>
+    </div>
+  </div>
+</header>
 
-  <main>
+<main class="omot">
+  <!-- POČETNA -->
+  <div class="pogled" id="pogled-pocetna" data-pogled="pocetna">
+    <div class="pozdrav" id="pozdrav-blok" hidden>
+      <h1 id="pozdrav">Dobar dan!</h1>
+      <p>Sve važno za tvoju adresu na jednom mjestu.</p>
+    </div>
     <div class="stanje prazno" id="stanje" aria-live="polite">
       <p class="dan" id="stanje-dan"></p>
-      <h1 id="stanje-naslov">Što se događa na vašoj adresi?</h1>
-      <p class="uz" id="stanje-tekst">Upišite adresu i na jednom mjestu vidjet ćete isključenja struje i vode, odvoz otpada, autobuse i događanja u gradu.</p>
+      <h1 id="stanje-naslov">Što se događa na tvojoj adresi?</h1>
+      <p class="uz" id="stanje-tekst">Upiši adresu i na jednom mjestu vidjet ćeš isključenja struje i vode, odvoz otpada, autobuse i događanja u gradu.</p>
     </div>
+    <div id="mjesto-obrasca"></div>
 
-    <div class="adresa-red" id="adresa-sazetak" hidden>
-      <div class="gdje" id="adresa-tekst"></div>
-      <button class="gumb-tihi" type="button" id="adresa-promijeni">Promijeni adresu</button>
-    </div>
+    <section class="blok" id="za-tebe-blok" hidden>
+      <h2 class="blok-naslov"><svg class="ik-naslov" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>Za tebe sljedećih dana</h2>
+      <ul class="za-tebe" id="za-tebe"></ul>
+    </section>
 
-    <section class="dio" id="dio-adresa">
-      <h2>Vaša adresa</h2>
+    <nav class="plocice" id="plocice" aria-label="Teme" hidden>
+      <a class="plocica" href="#/istrazi/otpad" id="pl-otpad"><span class="pl-ik" data-ik="kanta"></span><b>Odvoz otpada</b><span class="pl-sub">Raspored i podsjetnici</span></a>
+      <a class="plocica" href="#/istrazi/autobusi" id="pl-autobusi"><span class="pl-ik" data-ik="bus"></span><b>Autobusi</b><span class="pl-sub">Linije i polasci</span></a>
+      <a class="plocica" href="#/istrazi/struja" id="pl-struja"><span class="pl-ik" data-ik="voda-struja"></span><b>Voda i struja</b><span class="pl-sub">Prekidi i radovi</span></a>
+      <a class="plocica" href="#/istrazi/dogadjanja" id="pl-dogadjanja"><span class="pl-ik" data-ik="dogadjaj"></span><b>Događanja</b><span class="pl-sub">Što se događa</span></a>
+      <a class="vikend" href="#/istrazi/dogadjanja" id="pl-vikend"><span><b id="vikend-naslov">Ovaj vikend u Samoboru</b><span class="pl-sub" id="vikend-sub">Događanja, manifestacije i aktivnosti</span></span><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg></a>
+    </nav>
+  </div>
+
+  <!-- KALENDAR -->
+  <div class="pogled" id="pogled-kalendar" data-pogled="kalendar" hidden>
+    <section class="dio" id="dio-crta" hidden>
+      <h1 class="pogled-naslov">Kalendar</h1><p class="napomena">Sljedeća dva tjedna za tvoju adresu: isključenja, odvoz otpada i reciklažno dvorište.</p>
+      <ol class="crta" id="crta"></ol>
+    </section>
+  </div>
+
+  <!-- ISTRAŽI -->
+  <div class="pogled" id="pogled-istrazi" data-pogled="istrazi" hidden>
+    <h1 class="pogled-naslov">Istraži</h1>
+    <nav class="cipovi" aria-label="Skok na temu">
+      <a href="#/istrazi/struja">Struja i voda</a><a href="#/istrazi/otpad">Otpad</a><a href="#/istrazi/autobusi">Autobusi</a><a href="#/istrazi/dogadjanja">Događanja</a><a href="#/istrazi/podrucje">Cijelo područje</a>
+    </nav>
+    <section class="dio" id="dio-teme" hidden>
+      
+      <div class="tema" id="tema-struja"></div>
+      <div class="tema" id="tema-voda"></div>
+      <div class="tema" id="tema-otpad"></div>
+      <div class="tema" id="tema-autobusi"></div>
+    </section>
+    <section class="dio" id="dio-dogadjanja" hidden>
+      <h2>Događanja u gradu</h2>
+      <div id="dogadjanja"></div>
+    </section>
+    <section class="dio" id="dio-svi" data-sidro="podrucje">
+      <h2>Sve najave na području Samobora</h2>
+      <p class="napomena" id="svi-napomena">Isključenja struje (HEP) i vode (VIO) za cijelo područje, ne samo tvoju adresu.</p>
+      <ul class="popis" id="svi-popis"></ul>
+    </section>
+  </div>
+
+  <!-- POSTAVKE -->
+  <div class="pogled" id="pogled-postavke" data-pogled="postavke" hidden>
+    <h1 class="pogled-naslov">Postavke</h1>
+    <section class="dio" id="dio-adresa-sazetak" data-sidro="adresa">
+      <h2>Adresa</h2>
+      <div class="adresa-red" id="adresa-sazetak">
+        <div class="gdje" id="adresa-sazetak-tekst"></div>
+        <button class="gumb-tihi" type="button" id="adresa-promijeni">Promijeni</button>
+      </div>
+    </section>
+    <div id="mjesto-obrasca-postavke"></div>
+    <section class="dio" id="dio-obavijesti" data-sidro="obavijesti" hidden>
+      <h2>Obavijesti na mobitel</h2>
+      <p class="napomena">Odaberi o čemu ti javljamo za ovu adresu. Uz uključene obavijesti spremamo adresu i odabrane teme, a gumb Isključi ih briše. <a href="/privatnost/">Više o privatnosti</a></p>
+      <fieldset class="teme-izbor" id="teme-izbor">
+        <legend class="vizualno-skriveno">Teme obavijesti</legend>
+        <label><input type="checkbox" name="tema" value="struja"> <span><b>Struja</b> čim HEP najavi isključenje, i ujutro na taj dan</span></label>
+        <label><input type="checkbox" name="tema" value="voda"> <span><b>Voda</b> čim VIO najavi prekid, i ujutro na taj dan</span></label>
+        <label><input type="checkbox" name="tema" value="odvoz"> <span><b>Odvoz otpada</b> večer prije odvoza, oko 19 sati (zimi oko 18)</span></label>
+      </fieldset>
+      <div id="ios-uputa" class="uputa" hidden>
+        Na iPhoneu obavijesti rade tek kad je stranica dodana na početni zaslon:
+        <ol>
+          <li>Dodirni ikonu za dijeljenje u Safariju.</li>
+          <li>Odaberi „Dodaj na početni zaslon".</li>
+          <li>Otvori MojSamobor s početnog zaslona i uključi obavijesti ovdje.</li>
+        </ol>
+      </div>
+      <p id="obavijesti-stanje" class="ukljuceno" hidden>Obavijesti su uključene na ovom uređaju</p>
+      <div class="gumbi">
+        <button class="gumb" type="button" id="ukljuci">Uključi obavijesti</button>
+        <button class="gumb-tihi" type="button" id="proba" hidden>Pošalji probnu obavijest</button>
+        <button class="gumb-tihi" type="button" id="iskljuci" hidden>Isključi</button>
+      </div>
+      <p class="poruka" id="obavijesti-poruka" role="status"></p>
+    </section>
+    <section class="dio">
+      <h2>O aplikaciji</h2>
+      <footer class="dno">
+    <p>Podaci: <a href="https://www.hep.hr/ods/bez-struje/19?dp=zagreb&amp;el=115">HEP ODS</a>, <a href="https://www.vio.hr/obavijesti/privremeni-prekid-u-opskrbi-vodom-zbog-radova/1833">Vodoopskrba i odvodnja</a>, raspored odvoza Komunalca Samobor, vozni red <a href="https://www.samoborcek.hr/grad-samobor/">Samoborčeka</a>, <a href="https://www.samobor.hr/kalendar-dogadjanja">kalendar Grada Samobora</a> i najave <a href="https://www.radiosamobor.hr/">Radio Samobora</a>.</p>
+    <p id="provjereno"></p>
+    <p>MojSamobor je besplatna, neslužbena aplikacija obrta <a href="https://opticora.hr">OptiCora</a> i nije povezana s Gradom Samoborom. Kvar struje prijavi HEP-u na 0800 300 401, kvar vode VIO-u na 072 500 400. <a href="/privatnost/">Privatnost</a></p>
+  </footer>
+      <p class="druge">Druge aplikacije: <a href="https://odvoz-otpada-samobor.opticora.hr/">Odvoz otpada</a> · <a href="https://autobusi-samobor.opticora.hr/">Autobusi</a></p>
+    </section>
+  </div>
+</main>
+
+<div class="spremnik-obrasca" hidden><section class="dio" id="dio-adresa">
+      <h2>Tvoja adresa</h2>
       <form class="adresa" id="adresa-obrazac" novalidate>
         <label class="polje">Naselje
           <select id="naselje" required></select>
@@ -228,65 +383,14 @@
           <button class="gumb-tihi" type="button" id="adresa-odustani" hidden>Odustani</button>
         </div>
       </form>
-    </section>
+    </section></div>
 
-    <section class="dio" id="dio-crta" hidden>
-      <h2>Sljedeća dva tjedna</h2>
-      <ol class="crta" id="crta"></ol>
-    </section>
-
-    <section class="dio" id="dio-teme" hidden>
-      <h2>Po temama</h2>
-      <div class="tema" id="tema-struja"></div>
-      <div class="tema" id="tema-voda"></div>
-      <div class="tema" id="tema-otpad"></div>
-      <div class="tema" id="tema-autobusi"></div>
-    </section>
-
-    <section class="dio" id="dio-obavijesti" hidden>
-      <h2>Obavijesti na mobitel</h2>
-      <p class="napomena">Odaberite o čemu vam javljamo za ovu adresu. Uz uključene obavijesti spremamo adresu i odabrane teme, a gumb Isključi ih briše. <a href="/privatnost/">Više o privatnosti</a></p>
-      <fieldset class="teme-izbor" id="teme-izbor">
-        <legend class="vizualno-skriveno">Teme obavijesti</legend>
-        <label><input type="checkbox" name="tema" value="struja"> <span><b>Struja</b> čim HEP najavi isključenje, i ujutro na taj dan</span></label>
-        <label><input type="checkbox" name="tema" value="voda"> <span><b>Voda</b> čim VIO najavi prekid, i ujutro na taj dan</span></label>
-        <label><input type="checkbox" name="tema" value="odvoz"> <span><b>Odvoz otpada</b> večer prije odvoza, oko 19 sati (zimi oko 18)</span></label>
-      </fieldset>
-      <div id="ios-uputa" class="uputa" hidden>
-        Na iPhoneu obavijesti rade tek kad je stranica dodana na početni zaslon:
-        <ol>
-          <li>Dodirnite ikonu za dijeljenje u Safariju.</li>
-          <li>Odaberite „Dodaj na početni zaslon".</li>
-          <li>Otvorite MojSamobor s početnog zaslona i uključite obavijesti ovdje.</li>
-        </ol>
-      </div>
-      <p id="obavijesti-stanje" class="ukljuceno" hidden>Obavijesti su uključene na ovom uređaju</p>
-      <div class="gumbi">
-        <button class="gumb" type="button" id="ukljuci">Uključi obavijesti</button>
-        <button class="gumb-tihi" type="button" id="proba" hidden>Pošalji probnu obavijest</button>
-        <button class="gumb-tihi" type="button" id="iskljuci" hidden>Isključi</button>
-      </div>
-      <p class="poruka" id="obavijesti-poruka" role="status"></p>
-    </section>
-
-    <section class="dio" id="dio-dogadjanja" hidden>
-      <h2>Događanja u gradu</h2>
-      <div id="dogadjanja"></div>
-    </section>
-
-    <section class="dio" id="dio-svi">
-      <h2>Sve najave na području Samobora</h2>
-      <p class="napomena" id="svi-napomena">Isključenja struje (HEP) i vode (VIO) za cijelo područje, ne samo vašu adresu.</p>
-      <ul class="popis" id="svi-popis"></ul>
-    </section>
-  </main>
-
-  <footer class="dno">
-    <p>Podaci: <a href="https://www.hep.hr/ods/bez-struje/19?dp=zagreb&amp;el=115">HEP ODS</a>, <a href="https://www.vio.hr/obavijesti/privremeni-prekid-u-opskrbi-vodom-zbog-radova/1833">Vodoopskrba i odvodnja</a>, raspored odvoza Komunalca Samobor, vozni red <a href="https://www.samoborcek.hr/grad-samobor/">Samoborčeka</a>, <a href="https://www.samobor.hr/kalendar-dogadjanja">kalendar Grada Samobora</a> i najave <a href="https://www.radiosamobor.hr/">Radio Samobora</a>.</p>
-    <p id="provjereno"></p>
-    <p>MojSamobor je besplatna, neslužbena aplikacija obrta <a href="https://opticora.hr">OptiCora</a> i nije povezana s Gradom Samoborom. Kvar struje prijavite HEP-u na 0800 300 401, kvar vode VIO-u na 072 500 400. <a href="/privatnost/">Privatnost</a></p>
-  </footer>
-</div>
+<nav class="dolje" aria-label="Glavni izbornik">
+  <a href="#/" data-za="pocetna"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-6h4v6"/></svg><span>Početna</span></a>
+  <a href="#/kalendar" data-za="kalendar"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg><span>Kalendar</span></a>
+  <a href="#/istrazi" data-za="istrazi"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Istraži</span></a>
+  <a href="#/postavke" data-za="postavke"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Postavke</span></a>
+</nav>
 <script src="/app.js" type="module"></script>
 </body>
 </html>

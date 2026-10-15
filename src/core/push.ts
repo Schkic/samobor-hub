@@ -111,7 +111,7 @@ export function pushPayload(p: PlannedPush, today: string) {
   const addr = `${p.sub.address.street}${p.sub.address.houseNumber ? " " + p.sub.address.houseNumber : ""}`;
   let body =
     p.match === "place"
-      ? `Radovi u naselju ${p.sub.address.place}. Moguće je da obuhvaćaju i vašu adresu.`
+      ? `Radovi u naselju ${p.sub.address.place}. Moguće je da obuhvaćaju i tvoju adresu.`
       : `Radovi ${who === "HEP" ? "HEP-a" : "VIO-a"} obuhvaćaju ${addr}.`;
   if (water && notice.note && /cistern/i.test(notice.note)) body += " Autocisterna će biti na terenu.";
   return {
@@ -360,7 +360,7 @@ export function odvozPayload(p: PlannedOdvoz) {
   const list = p.types.map((t) => WASTE_LABEL[t].toLowerCase()).join(", ");
   return {
     title: `Sutra je odvoz: ${list}`,
-    body: "Iznesite spremnik večeras ili sutra do 6 sati ujutro.",
+    body: "Iznesi spremnik večeras ili sutra do 6 sati ujutro.",
     tag: p.key,
     url: "/",
   };
