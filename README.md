@@ -13,6 +13,7 @@ baza, API i poklapanje s adresom korisnika su zajednički.
 | Odvoz otpada | ✅ samo čitanje | javni `data.json` aplikacije za odvoz (aplikacija se ne dira) |
 | Autobusi (Samoborček) | ✅ samo čitanje | javni `data.json` aplikacije Autobusi; linije čija stanica odgovara naselju/ulici, sljedeći polasci prema vrsti dana (radni / subota / nedjelja i blagdan, s Uskrsom i Tijelovom) |
 | Događanja | ✅ samo čitanje | gradski kalendar `samobor.hr/kalendar-dogadjanja` (kino, predstave, izložbe, predavanja, knjižnica, muzej); robots.txt dopušta stranicu bez upita (`/*?` je zabranjen), čita se najviše svakih 6 sati |
+| Najave (Grad Samobor) | ✅ HTML | novosti s poveznicama na stranicama `/visit` i `/grad` (popis novosti `?cmd=news` je robots.txt-om zabranjen, sitemap je zastario); s `/grad` samo novosti o događanjima; svaka novost se čita jednom |
 | Najave (Radio Samobor) | ✅ RSS | rubrika Kultura → Najave (`/category/kultura/kultura_najave/feed/`); datum se čita iz teksta, prikazuju se samo najave koje nisu prošle (izvještaji se preskaču) |
 
 ## Struktura
@@ -53,7 +54,7 @@ Kad nije siguran, radije javi nego propusti.
 
 ```bash
 npm install
-npm test                         # 62 testa
+npm test                         # 66 testova
 # D1 baza već postoji (database_id je u wrangler.toml)
 npm run db:init                  # schema.sql (već pokrenuta, idempotentno)
 npm run dev                      # lokalno; cron: curl "localhost:8787/__scheduled"

@@ -14,11 +14,15 @@ export interface RssItem {
   url: string;
   published: string; // YYYY-MM-DD
   text: string;
+  source?: string; // "radiosamobor.hr" (zadano) ili "samobor.hr"
+  pdf?: { url: string; label: string } | null;
 }
 
 export interface Najava {
   title: string;
   url: string;
+  source: string;
+  pdf: { url: string; label: string } | null;
   published: string;
   from: string | null; // prvi spomenuti datum (ne prije objave)
   until: string | null; // zadnji spomenuti datum
@@ -91,9 +95,9 @@ export function najaveOverview(items: RssItem[], today: string): Najava[] {
     if (dates.length) {
       const until = dates[dates.length - 1];
       if (until < today || dates[0] > addDays(today, 60)) continue;
-      out.push({ title: it.title, url: it.url, published: it.published, from: dates[0], until });
+      out.push({ title: it.title, url: it.url, source: it.source ?? "radiosamobor.hr", pdf: it.pdf ?? null, published: it.published, from: dates[0], until });
     } else if (it.published >= addDays(today, -10)) {
-      out.push({ title: it.title, url: it.url, published: it.published, from: null, until: null });
+      out.push({ title: it.title, url: it.url, source: it.source ?? "radiosamobor.hr", pdf: it.pdf ?? null, published: it.published, from: null, until: null });
     }
   }
   return out.sort((a, b) => (a.from ?? a.published).localeCompare(b.from ?? b.published));

@@ -21,6 +21,7 @@ import { fetchOdvoz, resolveZone, zoneOverview } from "./sources/odvoz";
 import { busOverview, fetchBus, nowMinutesZagreb } from "./sources/bus";
 import { eventsOverview, fetchEvents } from "./sources/events";
 import { fetchNajave, najaveOverview } from "./sources/najave";
+import { articlesToItems, fetchGradNovosti } from "./sources/gradnovosti";
 import { buildTimeline, type MatchedNotice } from "./core/dashboard";
 import { TOWN, TOWN_STREETS, VILLAGES } from "./data/addresses";
 import { healthAlerts, type Alert, type RunRow } from "./core/health";
@@ -289,11 +290,12 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
     const evData = await fetchEvents(env.DB).catch(() => null);
     const hhmm = `${String(Math.floor(nowMin / 60)).padStart(2, "0")}:${String(nowMin % 60).padStart(2, "0")}`;
     const najData = await fetchNajave(env.DB).catch(() => null);
-    const events = evData || najData
+    const gradData = await fetchGradNovosti(env.DB).catch(() => null);
+    const events = evData || najData || gradData
       ? {
           ...(evData ? eventsOverview(evData.events, today, 7, hhmm) : { upcoming: [], ongoing: [] }),
           calendarOk: !!evData,
-          najave: najData ? najaveOverview(najData.items, today) : [],
+          najave: najaveOverview([...(najData?.items ?? []), ...articlesToItems(gradData?.articles ?? [])], today),
           fetchedAt: evData?.fetchedAt ?? null,
         }
       : null;

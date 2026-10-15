@@ -394,6 +394,20 @@ function renderDogadjanja(d) {
   if (!e.calendarOk) box.append(el("p", {}, "Gradski kalendar se trenutno ne može učitati. Pogledajte ga na ", kalendar.cloneNode(true), "."));
   else if (!e.upcoming.length) box.append(el("p", { textContent: "U idućih tjedan dana u gradskom kalendaru nema najavljenih događanja." }));
 
+  // Najave (gradske novosti i Radio Samobor) idu na vrh: to su veća događanja, npr. Dan grada
+  if (e.najave?.length) {
+    box.append(el("h3", { className: "dog-dan", textContent: "Najave" }));
+    const ul = el("ul", { className: "dog-popis" });
+    for (const n of e.najave) {
+      const kad = !n.from ? "uskoro" : n.from === n.until ? dm(n.from) : `${dm(n.from)}–${dm(n.until)}`;
+      const info = el("span", { className: "sitno dog-gdje" }, `${n.source}, ${dm(n.published)}`);
+      if (n.pdf) info.append(" · ", el("a", { href: n.pdf.url, textContent: "program (PDF)", target: "_blank", rel: "noopener" }));
+      ul.append(el("li", {}, el("b", { className: "dog-sat", textContent: kad }),
+        el("div", {}, el("a", { href: n.url, textContent: n.title, target: "_blank", rel: "noopener" }), info)));
+    }
+    box.append(ul);
+  }
+
   const PRVIH = 6;
   const popis = el("div");
   const prikazi = (lista) => {
@@ -432,18 +446,7 @@ function renderDogadjanja(d) {
     }
     box.append(iz);
   }
-  if (e.najave?.length) {
-    box.append(el("h3", { className: "dog-dan", textContent: "Najave s Radio Samobora" }));
-    const ul = el("ul", { className: "dog-popis" });
-    for (const n of e.najave) {
-      const kad = !n.from ? "uskoro" : n.from === n.until ? dm(n.from) : `${dm(n.from)}–${dm(n.until)}`;
-      ul.append(el("li", {}, el("b", { className: "dog-sat", textContent: kad }),
-        el("div", {}, el("a", { href: n.url, textContent: n.title, target: "_blank", rel: "noopener" }),
-          el("span", { className: "sitno dog-gdje", textContent: `radiosamobor.hr, ${dm(n.published)}` }))));
-    }
-    box.append(ul);
-  }
-  box.append(el("p", { className: "sitno" }, "Izvori: ", kalendar, " (kino, predstave, izložbe, predavanja, knjižnica, muzej) i ",
+  box.append(el("p", { className: "sitno" }, "Izvori: ", kalendar, " (kino, predstave, izložbe, predavanja, knjižnica, muzej), novosti Grada Samobora i ",
     el("a", { href: "https://www.radiosamobor.hr/category/kultura/kultura_najave/", textContent: "najave Radio Samobora" }), "."));
 }
 
