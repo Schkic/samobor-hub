@@ -7,6 +7,7 @@ import {
   deliver,
   deliverOdvoz,
   getSubscription,
+  getSubscriptionById,
   getVapidKey,
   saveSubscription,
   sendPush,
@@ -22,6 +23,7 @@ import { eventsOverview, fetchEvents } from "./sources/events";
 import { fetchNajave, najaveOverview } from "./sources/najave";
 import { buildTimeline, type MatchedNotice } from "./core/dashboard";
 import { TOWN, TOWN_STREETS, VILLAGES } from "./data/addresses";
+import { healthAlerts, type Alert, type RunRow } from "./core/health";
 
 export interface Env {
   DB: D1Database;
@@ -139,8 +141,47 @@ async function dispatchVio(env: Env, fetcher: typeof fetch = fetch): Promise<str
   });
   if (res.status === 204) return "pokrenuto";
   const msg = `GitHub dispatch: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`;
+  await sendAlert(env, {
+    key: "vio-dispatch",
+    title: "MojSamobor: GitHub odbija pokretanje VIO-a",
+    body: `HTTP ${res.status}. Ključ GITHUB_DISPATCH_TOKEN je možda istekao ili nema prava Actions (read & write) na Schkic/samobor-hub.`,
+  });
   await logRun(env.DB, "vio", false, 0, msg); // vidi se u /api/status
   return msg;
+}
+
+/**
+ * Uzbuna administratoru: push na pretplate navedene u D1 settings.admin_subs (id-jevi odvojeni zarezom),
+ * najviše jednom dnevno po ključu (tablica deliveries, kind 'alert').
+ */
+async function sendAlert(env: Env, a: Alert): Promise<void> {
+  try {
+    const row = await env.DB.prepare("SELECT value FROM settings WHERE key = 'admin_subs'").first<{ value: string }>();
+    const ids = (row?.value ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+    if (!ids.length) { console.warn(`uzbuna bez primatelja: ${a.title}`); return; }
+    const key = `alert:${a.key}:${todayZagreb()}`;
+    const { privateJwk } = await getVapidKey(env.DB);
+    for (const id of ids) {
+      const done = await env.DB.prepare("SELECT 1 FROM deliveries WHERE notice_id = ? AND sub_id = ? AND kind = 'alert'").bind(key, id).first();
+      if (done) continue;
+      const sub = await getSubscriptionById(env.DB, id);
+      if (!sub) continue;
+      const r = await sendPush(privateJwk, sub, { title: a.title, body: a.body, tag: key, url: "/api/status" }, 6 * 3600);
+      if (r === "sent") {
+        await env.DB.prepare("INSERT OR IGNORE INTO deliveries (notice_id, sub_id, kind, sent_at) VALUES (?, ?, 'alert', ?)")
+          .bind(key, id, new Date().toISOString()).run();
+      }
+    }
+  } catch (e) {
+    console.error("uzbuna nije poslana", e);
+  }
+}
+
+/** Rade li izvori? Pokreće se uz svaki cron. */
+async function checkHealth(env: Env): Promise<void> {
+  const vio = await env.DB.prepare("SELECT MAX(ran_at) AS t FROM source_runs WHERE source = 'vio' AND ok = 1").first<{ t: string | null }>();
+  const hep = await env.DB.prepare("SELECT ok, error, ran_at FROM source_runs WHERE source = 'hep' ORDER BY ran_at DESC LIMIT 2").all<RunRow>();
+  for (const a of healthAlerts(new Date(), zagrebHour(), vio?.t ?? null, hep.results)) await sendAlert(env, a);
 }
 
 // ---------------------------------------------------------------------------
@@ -384,7 +425,7 @@ export default {
       event.cron === ODVOZ_CRON ? runOdvozReminders(env)
       : event.cron === VIO_CRON ? dispatchVio(env).then((r) => console.log(`VIO dispatch: ${r}`))
       : runAll(env);
-    ctx.waitUntil(job);
+    ctx.waitUntil(job.then(() => checkHealth(env)));
   },
 
   async fetch(req: Request, env: Env): Promise<Response> {

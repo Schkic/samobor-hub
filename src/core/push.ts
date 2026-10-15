@@ -241,6 +241,11 @@ export async function getSubscription(db: D1Database, endpoint: string): Promise
   return r ? toSub(r) : null;
 }
 
+export async function getSubscriptionById(db: D1Database, id: string): Promise<Subscription | null> {
+  const r = await db.prepare("SELECT * FROM subscriptions WHERE id = ?").bind(id).first<SubRow>();
+  return r ? toSub(r) : null;
+}
+
 // ---------------------------------------------------------------------------
 // Slanje
 // ---------------------------------------------------------------------------

@@ -53,7 +53,7 @@ Kad nije siguran, radije javi nego propusti.
 
 ```bash
 npm install
-npm test                         # 60 testova
+npm test                         # 62 testa
 # D1 baza već postoji (database_id je u wrangler.toml)
 npm run db:init                  # schema.sql (već pokrenuta, idempotentno)
 npm run dev                      # lokalno; cron: curl "localhost:8787/__scheduled"
@@ -86,6 +86,12 @@ Komunalca, `src/data/addresses.ts`), vidi stanje za svoju adresu i uključi obav
   iz javnog `data.json`; ulica s više zona dobiva podsjetnik tek kad korisnik odabere zonu. Tablica `deliveries` sprječava duplikate; pretplate koje push servis
   odbije (404/410) se brišu.
 - Postojeće aplikacije (odvoz, autobusi) se ne diraju, hub ih samo povezuje.
+
+## Nadzor
+Uz svaki cron Worker provjerava izvore (`src/core/health.ts`): ako VIO ne stigne 3 sata (između 10 i 22 h),
+HEP dvaput zaredom ne uspije ili GitHub odbije pokretanje VIO-a, push obavijest ide na pretplate čiji su
+id-jevi u D1 `settings.admin_subs` (odvojeni zarezom), najviše jednom dnevno po problemu.
+Ključ `GITHUB_DISPATCH_TOKEN` (fine-grained, samo ovaj repo, Actions: read & write) je bez isteka.
 
 ## Deploy
 

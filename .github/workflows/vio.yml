@@ -1,12 +1,13 @@
 name: VIO prekidi vode
 
 # vio.hr Cloudflareovim poslužiteljima vraća prazan odgovor, a GitHubovima pravu
-# stranicu. Zato tablicu svaki sat dohvaća ovaj workflow i šalje je hubu.
-# Hub provjerava GitHubov OIDC token (potpisan, vezan uz ovaj repozitorij i granu),
-# pa nikakvi tajni ključevi nisu potrebni.
+# stranicu. Zato tablicu dohvaća ovaj workflow i šalje je hubu, koji provjerava
+# GitHubov OIDC token (potpisan, vezan uz ovaj repozitorij i granu).
+#
+# Raspored NIJE ovdje: Worker ga svaki sat u :20 pokreće preko API-ja (cron u wrangler.toml,
+# tajna GITHUB_DISPATCH_TOKEN). GitHubov schedule kasni satima, a u javnom repozitoriju
+# se nakon 60 dana bez promjena sam gasi; workflow_dispatch se ne gasi.
 on:
-  schedule:
-    - cron: "20 5-19 * * *" # svaki sat 07:20–21:20 po ljetnom vremenu (UTC)
   workflow_dispatch:
 
 permissions:

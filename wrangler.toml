@@ -12,7 +12,9 @@ run_worker_first = ["/api/*"]
 # HEP: 04:00 i 14:00 UTC = 06:00 i 16:00 po zagrebačkom ljetnom vremenu (zimi 05:00 i 15:00).
 # VIO: vio.hr Cloudflareu vraća prazan odgovor, pa tablicu dohvaća GitHub Actions
 # (.github/workflows/vio.yml) i šalje je na /api/ingest/vio. GitHubov raspored kasni
-# satima, pa ga Worker svaki sat u :20 sam pokreće (tajna GITHUB_DISPATCH_TOKEN).
+# satima (i gasi se nakon 60 dana bez promjena), pa ga Worker svaki sat u :20 pokreće
+# (tajna GITHUB_DISPATCH_TOKEN, bez isteka). Uz svaki cron ide provjera izvora: ako voda
+# ne stigne 3 sata ili HEP dvaput zaredom ne uspije, push ide na settings.admin_subs.
 # Ako mijenjaš izraze, promijeni i ODVOZ_CRON / VIO_CRON u src/worker.ts.
 # Svako pokretanje šalje push; ona prije podne šalju i podsjetnik "danas bez struje/vode".
 # 17:00 UTC (19:00 ljeti, 18:00 zimi): podsjetnik "sutra je odvoz" za one koji su ga uključili.
