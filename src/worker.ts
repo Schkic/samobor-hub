@@ -19,6 +19,7 @@ import { verifyGithubOidc } from "./core/oidc";
 import { fetchOdvoz, resolveZone, zoneOverview } from "./sources/odvoz";
 import { busOverview, fetchBus, nowMinutesZagreb } from "./sources/bus";
 import { eventsOverview, fetchEvents } from "./sources/events";
+import { fetchNajave, najaveOverview } from "./sources/najave";
 import { buildTimeline, type MatchedNotice } from "./core/dashboard";
 import { TOWN, TOWN_STREETS, VILLAGES } from "./data/addresses";
 
@@ -246,7 +247,15 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
     // Događanja: gradski kalendar (isti za sve adrese)
     const evData = await fetchEvents(env.DB).catch(() => null);
     const hhmm = `${String(Math.floor(nowMin / 60)).padStart(2, "0")}:${String(nowMin % 60).padStart(2, "0")}`;
-    const events = evData ? { ...eventsOverview(evData.events, today, 7, hhmm), fetchedAt: evData.fetchedAt } : null;
+    const najData = await fetchNajave(env.DB).catch(() => null);
+    const events = evData || najData
+      ? {
+          ...(evData ? eventsOverview(evData.events, today, 7, hhmm) : { upcoming: [], ongoing: [] }),
+          calendarOk: !!evData,
+          najave: najData ? najaveOverview(najData.items, today) : [],
+          fetchedAt: evData?.fetchedAt ?? null,
+        }
+      : null;
 
     const runs = await env.DB.prepare(
       "SELECT source, MAX(ran_at) AS ran_at FROM source_runs WHERE ok = 1 GROUP BY source",

@@ -391,7 +391,8 @@ function renderDogadjanja(d) {
     box.append(el("p", {}, "Događanja se trenutno ne mogu učitati. Pogledajte ih u ", kalendar, "."));
     return;
   }
-  if (!e.upcoming.length) box.append(el("p", { textContent: "U idućih tjedan dana u gradskom kalendaru nema najavljenih događanja." }));
+  if (!e.calendarOk) box.append(el("p", {}, "Gradski kalendar se trenutno ne može učitati. Pogledajte ga na ", kalendar.cloneNode(true), "."));
+  else if (!e.upcoming.length) box.append(el("p", { textContent: "U idućih tjedan dana u gradskom kalendaru nema najavljenih događanja." }));
 
   const MAX = 12;
   let dan = null, ul = null;
@@ -424,7 +425,19 @@ function renderDogadjanja(d) {
     }
     box.append(iz);
   }
-  box.append(el("p", { className: "sitno" }, "Izvor: ", kalendar, " (kino, predstave, izložbe, predavanja, knjižnica, muzej)."));
+  if (e.najave?.length) {
+    box.append(el("h3", { className: "dog-dan", textContent: "Najave s Radio Samobora" }));
+    const ul = el("ul", { className: "dog-popis" });
+    for (const n of e.najave) {
+      const kad = !n.from ? "uskoro" : n.from === n.until ? dm(n.from) : `${dm(n.from)}–${dm(n.until)}`;
+      ul.append(el("li", {}, el("b", { className: "dog-sat", textContent: kad }),
+        el("div", {}, el("a", { href: n.url, textContent: n.title, target: "_blank", rel: "noopener" }),
+          el("span", { className: "sitno dog-gdje", textContent: `radiosamobor.hr, ${dm(n.published)}` }))));
+    }
+    box.append(ul);
+  }
+  box.append(el("p", { className: "sitno" }, "Izvori: ", kalendar, " (kino, predstave, izložbe, predavanja, knjižnica, muzej) i ",
+    el("a", { href: "https://www.radiosamobor.hr/category/kultura/kultura_najave/", textContent: "najave Radio Samobora" }), "."));
 }
 
 async function osvjezi() {
