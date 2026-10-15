@@ -10,13 +10,14 @@ not_found_handling = "single-page-application"
 run_worker_first = ["/api/*"]
 
 # HEP: 04:00 i 14:00 UTC = 06:00 i 16:00 po zagrebačkom ljetnom vremenu (zimi 05:00 i 15:00).
-# VIO ne ide preko crona: vio.hr Cloudflareu vraća prazan odgovor, pa tablicu svaki sat
-# šalje GitHub Actions (.github/workflows/vio.yml) na /api/ingest/vio.
+# VIO: vio.hr Cloudflareu vraća prazan odgovor, pa tablicu dohvaća GitHub Actions
+# (.github/workflows/vio.yml) i šalje je na /api/ingest/vio. GitHubov raspored kasni
+# satima, pa ga Worker svaki sat u :20 sam pokreće (tajna GITHUB_DISPATCH_TOKEN).
+# Ako mijenjaš izraze, promijeni i ODVOZ_CRON / VIO_CRON u src/worker.ts.
 # Svako pokretanje šalje push; ona prije podne šalju i podsjetnik "danas bez struje/vode".
 # 17:00 UTC (19:00 ljeti, 18:00 zimi): podsjetnik "sutra je odvoz" za one koji su ga uključili.
-# Ako mijenjaš ovaj izraz, promijeni i ODVOZ_CRON u src/worker.ts.
 [triggers]
-crons = ["0 4,14 * * *", "0 17 * * *"]
+crons = ["0 4,14 * * *", "0 17 * * *", "20 5-19 * * *"]
 
 # Javna adresa aplikacije. Cloudflare sam postavlja DNS zapis i certifikat (zona opticora.hr).
 # Push pretplate vezane su uz ovu adresu, pa je ne treba mijenjati bez razloga.

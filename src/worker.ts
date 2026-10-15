@@ -24,6 +24,12 @@ import { TOWN, TOWN_STREETS, VILLAGES } from "./data/addresses";
 export interface Env {
   DB: D1Database;
   ASSETS: Fetcher;
+  /**
+   * Fine-grained GitHub token (samo Schkic/samobor-hub, Actions: read & write).
+   * Upisuje se kao tajna u Cloudflareu, nikad u repozitorij. Bez njega VIO ovisi
+   * samo o GitHubovom rasporedu, koji zna kasniti satima.
+   */
+  GITHUB_DISPATCH_TOKEN?: string;
 }
 
 /** Koliko dana unaprijed gledamo. HEP objavljuje otprilike tjedan dana. */
@@ -106,8 +112,34 @@ async function runOdvozReminders(env: Env) {
   return r;
 }
 
-/** Cron za večernji podsjetnik (wrangler.toml); ostali cronovi su HEP. */
+/** Cron za večernji podsjetnik (wrangler.toml). */
 const ODVOZ_CRON = "0 17 * * *";
+/** Cron koji svaki sat pokreće VIO workflow na GitHubu (wrangler.toml). */
+const VIO_CRON = "20 5-19 * * *";
+
+/**
+ * Pokreće .github/workflows/vio.yml preko GitHub API-ja (workflow_dispatch).
+ * GitHubov vlastiti raspored kasni satima, a Cloudflareov cron je točan.
+ * Workflow zatim sam pošalje VIO tablicu na /api/ingest/vio.
+ */
+async function dispatchVio(env: Env, fetcher: typeof fetch = fetch): Promise<string> {
+  if (!env.GITHUB_DISPATCH_TOKEN) return "preskočeno: nema GITHUB_DISPATCH_TOKEN";
+  const res = await fetcher("https://api.github.com/repos/Schkic/samobor-hub/actions/workflows/vio.yml/dispatches", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${env.GITHUB_DISPATCH_TOKEN}`,
+      "Accept": "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "User-Agent": "samobor-hub",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ ref: "main" }),
+  });
+  if (res.status === 204) return "pokrenuto";
+  const msg = `GitHub dispatch: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`;
+  await logRun(env.DB, "vio", false, 0, msg); // vidi se u /api/status
+  return msg;
+}
 
 // ---------------------------------------------------------------------------
 // HTTP
@@ -315,6 +347,7 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
     out.hep = await runHep(env).then((r) => ({ found: r.found, added: r.added.length })).catch((e) => String(e));
     out.push = await pushAll(env);
     if (url.searchParams.get("odvoz") === "1") out.odvoz = await runOdvozReminders(env);
+    if (url.searchParams.get("vio") === "1") out.vio = await dispatchVio(env);
     return json(out);
   }
 
@@ -322,7 +355,7 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
   if (path === "/api/status" && req.method === "GET") {
     const runs = await env.DB.prepare("SELECT * FROM source_runs ORDER BY ran_at DESC LIMIT 20").all();
     const subs = await env.DB.prepare("SELECT COUNT(*) AS n FROM subscriptions").first<{ n: number }>();
-    return json({ subscriptions: subs?.n ?? 0, runs: runs.results });
+    return json({ subscriptions: subs?.n ?? 0, vioDispatch: !!env.GITHUB_DISPATCH_TOKEN, runs: runs.results });
   }
 
   return json({ error: "not found" }, 404);
@@ -330,7 +363,11 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
 
 export default {
   async scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(event.cron === ODVOZ_CRON ? runOdvozReminders(env) : runAll(env));
+    const job =
+      event.cron === ODVOZ_CRON ? runOdvozReminders(env)
+      : event.cron === VIO_CRON ? dispatchVio(env).then((r) => console.log(`VIO dispatch: ${r}`))
+      : runAll(env);
+    ctx.waitUntil(job);
   },
 
   async fetch(req: Request, env: Env): Promise<Response> {

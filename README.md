@@ -9,7 +9,7 @@ baza, API i poklapanje s adresom korisnika su zajednički.
 | Izvor | Status | Odakle |
 |---|---|---|
 | HEP – isključenja struje | ✅ gotovo | `hep.hr/ods/bez-struje/19?dp=zagreb&el=115&datum=DD.MM.YYYY` (TJ Samobor) |
-| VIO – prekidi vode | ✅ gotovo | tablica na vio.hr, filtrirana na Samobor i naselja; svaki sat preko GitHub Actions (vio.hr Cloudflareu vraća prazan odgovor), hub provjerava GitHubov OIDC token |
+| VIO – prekidi vode | ✅ gotovo | tablica na vio.hr, filtrirana na Samobor i naselja; svaki sat preko GitHub Actions (vio.hr Cloudflareu vraća prazan odgovor); Worker cron u :20 pokreće workflow (tajna `GITHUB_DISPATCH_TOKEN`, fine-grained, samo ovaj repo, Actions: read & write), a hub provjerava GitHubov OIDC token |
 | Odvoz otpada | ✅ samo čitanje | javni `data.json` aplikacije za odvoz (aplikacija se ne dira) |
 | Autobusi (Samoborček) | ✅ samo čitanje | javni `data.json` aplikacije Autobusi; linije čija stanica odgovara naselju/ulici, sljedeći polasci prema vrsti dana (radni / subota / nedjelja i blagdan, s Uskrsom i Tijelovom) |
 | Događanja | kasnije | TZ Samobor, POU, knjižnica |
